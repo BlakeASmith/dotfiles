@@ -206,6 +206,8 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
   (consult-buffer))
 #+end_src
 
+[[file:open-buffer-on-split.gif]]
+
 *** Undo Tree
 
 #+begin_src emacs-lisp :tangle ~/.doom.d/config.el
