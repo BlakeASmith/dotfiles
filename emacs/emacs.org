@@ -218,6 +218,8 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
       evil-undo-system 'undo-tree)
 #+end_src
 
+[[file:undo-tree.gif][file:undo-tree.gif]]
+
 *** Org Roam
 
 **** Keybindings
