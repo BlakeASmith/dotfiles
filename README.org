@@ -1,1 +1,3 @@
 * Dotfiles 
+
+| Awesome Window Manager | [[file:awesomewm/rc.org][rc.lua]] |
