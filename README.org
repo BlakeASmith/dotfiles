@@ -1,3 +1,4 @@
 * Dotfiles 
 
-| Awesome Window Manager | [[file:awesomewm/rc.org][rc.lua]] |
+| Awesome Window Manager | [[file:awesomewm/rc.org][rc.lua]]    |
+| Qtile                  | [[file:qtile/config.org][config.py]] |
