@@ -1,0 +1,282 @@
+#+title: Emacs Configuration
+
+* Doom Emacs
+
+I use a distribution of Emacs called [[https://github.com/hlissner/doom-emacs][Doom Emacs]]. As such, the configuration is
+quite different than base Emacs.
+
+Doom Emacs has 3 config files:
+
+1. init.el
+2. config.el
+3. packages.el
+
+* External Dependencies
+
+#+begin_src sh
+sudo pacman -S fd
+#+end_src
+
+*** Latex
+
+You might be able to get away with ~texlive-core~, but I haven't tried it. This
+one will take some time.
+
+#+begin_src sh
+sudo pacman -S texlive-most
+#+end_src
+
+*** Golang
+
+#+begin_src sh
+sudo pacman -S go gopls
+yay gore
+yay gomodifytags
+yay gotests
+yay guru
+#+end_src
+
+*** Python
+
+#+begin_src sh
+sudo pip install pyflakes isort pipenv pytest
+#+end_src
+
+*** Kotlin
+
+#+begin_src sh
+yay ktlint
+#+end_src
+
+*** Web
+
+#+begin_src sh
+yay tidy
+yay stylelint
+yay js-beautify
+#+end_src
+
+* =init.el=
+
+This file is for your ~doom!~ block. This is where you tell Doom Emacs which
+modules to install. Doom modules are bundles of packages and configuration for
+specific functions and programming languages.
+
+Make sure to run ~doom sync~ after changing the ~init.el~:
+
+#+begin_src sh
+~/.emacs.d/bin/doom sync
+#+end_src
+
+If you run into issues, try running ~doom doctor~:
+
+#+begin_src sh
+~/.emacs.d/bin/doom doctor
+#+end_src
+
+Here is the ~doom!~ block where the magic happens:
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/init.el
+(doom! :completion
+       company
+       vertico
+
+       :ui
+       doom
+       doom-dashboard
+       hl-todo
+       (emoji +unicode)
+       ligatures
+       minimap
+       modeline
+       nav-flash
+       treemacs
+       vc-gutter
+       vi-tilde-fringe
+       window-select
+       workspaces
+       zen
+
+       :editor
+       (evil +everywhere)
+       file-templates
+       fold
+       (format +onsave)
+       snippets
+
+       :emacs
+       dired
+       electric
+       ibuffer
+       undo
+       vc
+
+       :term
+       eshell
+       vterm
+
+       :checkers
+       syntax
+       (spell +flyspell)
+       grammar
+
+       :tools
+       magit
+       gist
+       lookup
+       make
+       pdf
+       rgb
+       lsp
+
+       :lang
+       org
+       markdown
+
+       data
+       json
+       yaml
+
+       emacs-lisp
+       (go +lsp)
+       (graphql +lsp)
+
+       javscript
+       lua
+       python
+       kotlin
+       scala
+       web
+
+       :email
+       (mu4e +org +gmail)
+
+       :app
+       (rss +org)
+       (twitter)
+
+       :config
+       (default +bindings +smartparens)
+)
+#+end_src
+
+* =packages.el=
+
+The ~packages.el~ file is for installing additional emacs packages, aside from
+the ones installed by the doom modules.
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/packages.el
+(package! js2-mode)
+(package! tide)
+(package! prettier-js)
+
+(package! undo-tree)
+(package! pretty-mode)
+
+(package! org-roam)
+#+end_src
+
+* =config.el=
+
+The ~config.el~ file is for all of the custom configuration, other than package
+installs. Doom emacs will evaluate ~config.el~ after all of the packages in
+~packages.el~ have loaded.
+
+*** User Info
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(setq user-full-name "Blake Smith"
+      user-mail-address "blakeinvictoria@gmail.com")
+#+end_src
+
+*** Relative Line Numbers
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(setq display-line-numbers-type 'relative)
+#+end_src
+
+*** Open Buffer on Split
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(setq evil-vsplit-window-right t
+      evil-split-window-below t)
+
+(defadvice! prompt-for-buffer (&rest _)
+  :after '(evil-window-split evil-window-vsplit)
+  (consult-buffer))
+#+end_src
+
+*** Undo Tree
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(global-undo-tree-mode)
+(setq undo-tree-visualizer-diff t
+      undo-tree-visualizer-timestamps t
+      undo-tree-auto-save-history nil
+      evil-undo-system 'undo-tree)
+#+end_src
+
+*** Org Roam
+
+**** Keybindings
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(map! :leader
+      (:prefix ("r" . "org-roam")
+       :desc "capture"
+       "c" #'org-roam-capture
+       :desc "find node"
+       "f" #'org-roam-node-find
+       :desc "insert"
+       "i" #'org-roam-node-insert
+       :desc "org roam buffer toggle"
+       "l" #'org-roam-buffer-toggle))
+#+end_src
+
+**** Capture Templates
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(setq org-roam-capture-templates
+             '(("m" "main" plain "%?"
+               :if-new
+               (file+head "main/${slug}.org"
+                          "#+title: ${title}\n")
+               :immediate-finish t
+               :unnarrowed t)
+
+               ("i" "idea" plain "%?"
+                :if-new
+               (file+head "ideas/${title}.org"
+                          "#+title: ${title}\n#+filetags: :idea:\n")
+               :immediate-finish t
+               :unnarrowed t)))
+
+(defun me/tag-as-draft ()
+  (org-roam-tag-add '("draft")))
+
+(add-hook 'org-roam-capture-new-node-hook #'me/tag-as-draft)
+#+end_src
+
+*** Typescript LSP
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(defun setup-tide ()
+  (interactive)
+  (tide-setup)
+  (flycheck-mode +1)
+  (eldoc-mode +1)
+  (tide-hl-identifier-mode +1)
+  (company-mode + 1)
+  (setq company-minimum-prefix-length 1)
+  (setq tide-format-options '(:indentSize 4
+                              :tabSize 4))
+  (local-set-key (kbd "C-c d") 'tide-documentation-at-point))
+
+(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
+
+(add-hook 'js2-mode-hook #'setup-tide)
+(flycheck-add-next-checker 'javascript-eslint 'append)
+(add-hook 'js2-mode-hook 'prettier-js-mode)
+
+(setq js2-basic-offset 2)
+#+end_src
