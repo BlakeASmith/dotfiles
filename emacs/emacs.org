@@ -243,19 +243,25 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
 
 #+begin_src emacs-lisp :tangle ~/.doom.d/config.el
 (setq org-roam-capture-templates
-             '(("m" "main" plain "%?"
-               :if-new
-               (file+head "main/${slug}.org"
-                          "${title}\n")
-               :immediate-finish t
-               :unnarrowed t)
+      '(("m" "main" plain "%?"
+         :if-new
+         (file+head "main/${slug}.org"
+                    "${title}\n")
+         :immediate-finish t
+         :unnarrowed t)
+        ("d" "dev" plain "%?"
+         :if-new
+         (file+head "dev/${slug}.org"
+                    "${title}\n")
+         :immediate-finish t
+         :unnarrowed t)
 
-               ("i" "idea" plain "%?"
-                :if-new
-               (file+head "ideas/${title}.org"
-                          "${title}\n#+filetags: :idea:\n")
-               :immediate-finish t
-               :unnarrowed t)))
+        ("i" "idea" plain "%?"
+         :if-new
+         (file+head "ideas/${title}.org"
+                    "${title}\n#+filetags: :idea:\n")
+         :immediate-finish t
+         :unnarrowed t)))
 
 (defun me/tag-as-draft ()
   (org-roam-tag-add '("draft")))
