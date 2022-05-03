@@ -174,6 +174,8 @@ the ones installed by the doom modules.
 (package! pretty-mode)
 
 (package! org-roam)
+(unpin! org-roam) ;; stops org-roam-ui from breaking due to package conflict
+(package! org-roam-ui)
 #+end_src
 
 * =config.el=
@@ -244,14 +246,14 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
              '(("m" "main" plain "%?"
                :if-new
                (file+head "main/${slug}.org"
-                          "#+title: ${title}\n")
+                          "${title}\n")
                :immediate-finish t
                :unnarrowed t)
 
                ("i" "idea" plain "%?"
                 :if-new
                (file+head "ideas/${title}.org"
-                          "#+title: ${title}\n#+filetags: :idea:\n")
+                          "${title}\n#+filetags: :idea:\n")
                :immediate-finish t
                :unnarrowed t)))
 
@@ -259,6 +261,35 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
   (org-roam-tag-add '("draft")))
 
 (add-hook 'org-roam-capture-new-node-hook #'me/tag-as-draft)
+#+end_src
+
+**** Variables
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(setq org-roam-directory (file-truename "~/org-roam"))
+
+(org-roam-db-autosync-mode)
+#+end_src
+
+**** Org Roam UI
+
+Obsidian style graph UI for org-roam
+
+#+begin_src emacs-lisp :tangle ~/.doom.d/config.el
+(use-package! websocket
+    :after org-roam)
+
+(use-package! org-roam-ui
+    :after org-roam ;; or :after org
+;;         normally we'd recommend hooking orui after org-roam, but since org-roam does not have
+;;         a hookable mode anymore, you're advised to pick something yourself
+;;         if you don't care about startup time, use
+;;  :hook (after-init . org-roam-ui-mode)
+    :config
+    (setq org-roam-ui-sync-theme t
+          org-roam-ui-follow t
+          org-roam-ui-update-on-save t
+          org-roam-ui-open-on-start t))
 #+end_src
 
 *** Typescript LSP
