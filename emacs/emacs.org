@@ -136,6 +136,7 @@ Here is the ~doom!~ block where the magic happens:
        pdf
        rgb
        lsp
+       docker
 
        :lang
        org
@@ -164,6 +165,7 @@ Here is the ~doom!~ block where the magic happens:
        (twitter)
 
        :config
+       literate
        (default +bindings +smartparens)
 )
 #+end_src
@@ -323,7 +325,6 @@ Obsidian style graph UI for org-roam
 (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
 
 (add-hook 'js2-mode-hook #'setup-tide)
-(flycheck-add-next-checker 'javascript-eslint 'append)
 (add-hook 'js2-mode-hook 'prettier-js-mode)
 
 (setq js2-basic-offset 2)
