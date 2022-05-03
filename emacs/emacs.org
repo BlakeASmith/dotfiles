@@ -26,6 +26,14 @@ one will take some time.
 sudo pacman -S texlive-most
 #+end_src
 
+*** Pandoc
+
+Handle conversions between document formats.
+
+#+begin_src sh
+sudo pacman -S pandoc
+#+end_src
+
 *** Golang
 
 #+begin_src sh
@@ -223,7 +231,6 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
 [[file:undo-tree.gif][file:undo-tree.gif]]
 
 *** Org Roam
-
 **** Keybindings
 
 #+begin_src emacs-lisp :tangle ~/.doom.d/config.el
