@@ -224,6 +224,7 @@ installs. Doom emacs will evaluate ~config.el~ after all of the packages in
 
 #+begin_src emacs-lisp :tangle ~/.doom.d/config.el
 (global-undo-tree-mode)
+(add-hook 'evil-local-mode-hook 'turn-on-undo-tree-mode)
 (setq undo-tree-visualizer-diff t
       undo-tree-visualizer-timestamps t
       undo-tree-auto-save-history nil
