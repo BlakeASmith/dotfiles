@@ -1,0 +1,113 @@
+#+title: Kmonad
+
+[[https://github.com/kmonad/kmonad][Kmonad]] is a keyboard remapping tool which provides similar features to [[https://github.com/qmk][QMK]], but
+at the software level.
+
+** Setup
+
+#+begin_src sh :dir /sudo::
+sudo usermod -aG input $USER
+sudo groupadd uinput
+
+echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/90-uinput.rules
+
+echo uinput | sudo tee /etc/modules-load.d/uinput.conf
+#+end_src
+
+** Keyboard
+
+You need to set the device file, which will be different for every keyboard.
+
+Look in =/dev/input/by-id/= or =/dev/input/by-path= for the builtin laptop keyboard.
+
+#+begin_src text :tangle ~/.config/kmonad/config.kbd
+(defcfg
+  input  (device-file "/dev/input/by-id/usb-MOSART_Semi._PERIDUO-606-event-kbd")
+  output (uinput-sink "KMonad kbd")
+  fallthrough true
+  allow-cmd true)
+#+end_src
+
+** Blueprint
+
+This is the base blueprint for your keyboard, it should match your keyboards specific layout.
+
+I use a weird split ergo keyboard, so your layout is almost definitely different.
+
+#+begin_src text :tangle ~/.config/kmonad/config.kbd
+(defsrc
+  esc f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 prnt del
+  ` 1 2 3 4 5 6 7 8 9 0 -  =  bspc home
+  tab q w e r t y u i o  p [ ] \ end
+  caps a s d f g h j k l ; ' \ ret pgup
+  lsft z x c v b n m , . / rsft up pgdn
+  lctl lmet lalt spc ralt cmps rctl left down rght
+)
+#+end_src
+
+** Aliases
+
+*** Sticky Shifting
+
+Changes the behaviour of the shift key (left or right). On hold it acts like a
+normal shift, but when pressed it toggles "shifting" for one press.
+
+So "shift j" will ouput J, and so will "shift+j". This saves you from doing
+awkward finger gymnastics when typing things like "&". It also flows nicely when
+Capitalizing Words.
+
+#+begin_src text :tangle ~/.config/kmonad/config.kbd
+(defalias
+  sym (layer-toggle symbols)
+  ssft (around-next sft)
+  ssft+sft (tap-next @ssft sft))
+#+end_src
+
+*** Toggle Layer by Holding Down Space
+
+Toggle the symbol layer by holding down space. Holding down the spacebar is mostly useless, and I don't mind tapping multiple times the odd time I need to.
+
+Tapping space works exactly as expected, except that spc is on key up instead of
+key down. I don't really notice the difference. When holding spc the symbols layer will be active.
+
+One way that I use this is to map the arrow keys to hjkl when spc is held.
+
+#+begin_src text :tangle ~/.config/kmonad/config.kbd
+(defalias
+  symspace (tap-next spc @sym))
+#+end_src
+
+*** Easy Escape With ff
+
+Double tap `f` to send `esc`. I can't think of any double f words, so this
+should be safe. I've used similar beforein VIM to exit into normal mode when
+`jj` is pressed in insert mode. jj won't do though since I commonly double tap j
+when moving between lines in normal mode.
+
+#+begin_src text :tangle ~/.config/kmonad/config.kbd
+(defalias
+  ffesc (multi-tap 200 f esc)l)
+#+end_src
+** Layouts
+
+Here we add the layouts we want, based on the source layout.
+#+begin_src text :tangle ~/.config/kmonad/config.kbd
+(deflayer base
+  esc f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 prnt del
+  ` 1 2 3 4 5 6 7 8 9 0 -  =  bspc home
+  tab q w e r t y u i o  p [ ] \ end
+  lctl a s d @ffesc g h j k l ; ' \ ret pgup
+  @ssft+sft z x c v b n m , . / @ssft+sft up pgdn
+  lctl lmet lalt @symspace @sym cmps rctl left down rght
+)
+
+(deflayer symbols
+  esc f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 prnt del
+  ` 1 2 3 4 5 6 7 8 9 0 -  =  bspc home
+  tab q w e r t y u i o  p [ ] \ end
+  lctl a s d f g left down up rght : ' \ ret pgup
+  lsft z x c v b n m , . / rsft up pgdn
+  lctl lmet lalt spc ralt cmps rctl left down rght
+)
+
+#+end_src
