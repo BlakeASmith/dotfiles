@@ -1,0 +1,7 @@
+#+title: Xinit
+
+#+begin_src sh :tangle ~/.xinitrc
+boltctl authorize 00ac4a00-a8cf-d400-ffff-ffffffffffff
+kmonad ~/.config/kmonad/config.kbd
+nm-applet
+#+end_src
