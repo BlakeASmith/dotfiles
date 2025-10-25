@@ -29,6 +29,10 @@ def config_zsh(args: Namespace):
         raise ValueError("You .zshrc has two KEYBINDINGS existing_blocks, I don't know what to do here")
 
     if existing_blocks:
+        if args.replace:
+            _ = existing_blocks[0].replace(keybinds_block.content, rc_path)
+            print("replaced content with latest")
+            return
         print("you already have this config installed")
         print(existing_blocks[0].text)
         return
@@ -53,6 +57,7 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest="_program")
     zsh = subparsers.add_parser("zsh")
     _ = zsh.add_argument("--edit-rc", help="whether to modify the zshrc file", action="store_true")
+    _ = zsh.add_argument("--replace", help="whether to modify the zshrc file", action="store_true")
 
     args= parser.parse_args()
 

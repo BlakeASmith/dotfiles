@@ -18,7 +18,23 @@ class FencedBlock:
         Write the block to the bottom of the file at path
         """
         with path.open('a') as f:
-            _ = f.write(self.text)
+            _ = f.write("\n" + self.text)
+
+    def replace(self, content: str, source: Path | str):
+        if isinstance(source, Path):
+            file_content = source.read_text()
+        else:
+            file_content = source
+
+        prefix = file_content[0:self.content_location[0]]
+        postfix = file_content[self.content_location[1]:]
+
+        new_file_content = prefix + content + postfix
+
+        if isinstance(source, Path):
+            _ = source.write_text(new_file_content)
+
+        return new_file_content
 
 
 @dataclass(frozen=True)
@@ -88,3 +104,4 @@ class CodeFence:
             )
             for smatch, ematch in startends
         ]
+
