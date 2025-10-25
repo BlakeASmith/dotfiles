@@ -3,3 +3,4 @@
 /qtile/.config.org.~undo-tree~
 /awesomewm/.rc.org.~undo-tree~
 python/fencing/fencing.egg-info
+python/fencing/fencing/__pycache__

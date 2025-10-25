@@ -1,7 +1,8 @@
 import sys
-sys.path.append("../python")
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+fencing_path =Path(__file__).parent/"python/fencing"
+sys.path.append(str(fencing_path))
 from fencing import CodeFence
 
 HERE = Path(__file__).parent
@@ -15,27 +16,27 @@ KEYBINDINGS_FENCE = CodeFence(
 def config_zsh(args: Namespace):
     keybinds_path = HERE/'zsh/keybinds.sh'
     keybinds_sh = keybinds_path.read_text()
+    keybinds_block = KEYBINDINGS_FENCE.find_blocks(keybinds_sh)[0]
 
     rc_path = HOME/".zshrc"
     rc_sh = rc_path.read_text()
 
-    blocks = KEYBINDINGS_FENCE.find_blocks(rc_sh)
+    existing_blocks = KEYBINDINGS_FENCE.find_blocks(rc_sh)
 
-    # expect zero or one blocks
-    if len(blocks) > 1:
-        print(blocks)
-        raise ValueError("You .zshrc has two KEYBINDINGS blocks, I don't know what to do here")
+    # expect zero or one existing_blocks
+    if len(existing_blocks) > 1:
+        print("\n...".join((block.text for block in existing_blocks)))
+        raise ValueError("You .zshrc has two KEYBINDINGS existing_blocks, I don't know what to do here")
 
-    if blocks:
+    if existing_blocks:
         print("you already have this config installed")
-        print(blocks[0])
+        print(existing_blocks[0].text)
         return
 
     if args.edit_rc:
-        updated= "\n".join([rc_sh, keybinds_sh])
-        _ = rc_path.write_text(updated)
+        keybinds_block.append_to(rc_path)
         print("added to the end of your .zshrc:")
-        print("\n".join("  " + line for line in (keybinds_sh.splitlines())))
+        print(keybinds_block.text)
         return
 
     print("# add to your .zshrc")
