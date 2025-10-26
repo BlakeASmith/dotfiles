@@ -5,6 +5,58 @@ local Terminal = {}
 Terminal.__index = Terminal
 local active_instances = {}
 
+local function get_selected_text()
+  -- Check if we're currently in visual mode using nvim_get_mode()
+  local mode_info = vim.api.nvim_get_mode()
+  local current_mode = mode_info.mode
+
+  -- Check if we're in any visual mode (v, V, or Ctrl+V)
+  if not string.match(current_mode, "^[vV]") and current_mode ~= "\22" then
+    -- Not in visual mode, do NOT capture anything
+    return nil
+  end
+
+  -- We ARE in visual mode, so force normal mode and capture
+  vim.cmd("normal! \27") -- Send Escape to exit visual mode
+
+  -- Now get the selection markers (they should be current)
+  local start_pos = vim.fn.getpos("'<")
+  local end_pos = vim.fn.getpos("'>")
+
+  -- If markers are invalid, return nil
+  if start_pos[2] <= 0 or end_pos[2] <= 0 then
+    return nil
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
+  if #lines == 0 then
+    return nil
+  end
+
+  -- Extract the selection based on positions
+  local result = {}
+  for i, line in ipairs(lines) do
+    local start_col = start_pos[3]
+    local end_col = end_pos[3]
+
+    if i == 1 and i == #lines then
+      -- Single line selection
+      table.insert(result, string.sub(line, start_col, end_col))
+    elseif i == 1 then
+      -- First line of multi-line selection
+      table.insert(result, string.sub(line, start_col))
+    elseif i == #lines then
+      -- Last line of multi-line selection
+      table.insert(result, string.sub(line, 1, end_col))
+    else
+      -- Middle lines
+      table.insert(result, line)
+    end
+  end
+
+  return table.concat(result, "\n")
+end
+
 ---
 -- Internal helper to calculate pixel geometry from percentages.
 --
@@ -52,11 +104,18 @@ function M:new(config)
   return self
 end
 
-function Terminal:toggle(win_opts) -- win_opts is the new percentage config
+function Terminal:toggle(win_opts)
   if self.win_id and vim.api.nvim_win_is_valid(self.win_id) then
-    self:hide()
+    if win_opts then
+      local user_opts = win_opts
+      local final_win_opts = self:_calculate_win_geometry(user_opts)
+      vim.api.nvim_win_set_config(self.win_id, final_win_opts)
+      vim.api.nvim_set_current_win(self.win_id)
+    else
+      self:hide()
+    end
   else
-    self:open(win_opts) -- Pass it to open
+    self:open(win_opts)
   end
 end
 
@@ -136,18 +195,44 @@ end
 
 local terms = {}
 
+--- @class TFlingTermDetails
+--- @field job_id number the job ID (channel ID for nvim_chan_send)
+--- @field bufnr number the buffer number
+--- @field win_id number the window ID
+--- @field name string the terminal name
+--- @field cmd string the command being run
+--- @field send function helper function to send commands to the terminal
+--- @field selected_text? string the text that was selected when triggered from visual mode
+
 --- @class TFlingTerm
---- @field name string the name (needs to be unique)
+--- @field name? string the name (needs to be unique, defaults to cmd)
 --- @field cmd string the command/program to run
---- @field width string width as a percentage like "80%"
---- @field height string height as a percentage like "80%"
---- @field setup? function function to run on mount (you can setup keymaps)
+--- @field width? string width as a percentage like "80%" (defaults to "80%")
+--- @field height? string height as a percentage like "80%" (defaults to "80%")
+--- @field send_delay? number delay in milliseconds before sending commands (defaults to global config)
+--- @field setup? fun(details: TFlingTermDetails) function to run on mount (receives TFlingTermDetails table)
 
 --- @param opts TFlingTerm
 function TFling(opts)
   if opts.setup == nil then
     opts.setup = function() end
   end
+
+  -- Set default name to cmd if not provided
+  if opts.name == nil then
+    opts.name = opts.cmd
+  end
+
+  -- Set default width and height to 80% if not provided
+  if opts.width == nil then
+    opts.width = "80%"
+  end
+  if opts.height == nil then
+    opts.height = "80%"
+  end
+
+  -- Capture selected text BEFORE any buffer operations
+  local captured_selected_text = get_selected_text()
 
   if terms[opts.name] == nil then
     terms[opts.name] = M:new({
@@ -158,7 +243,7 @@ function TFling(opts)
       },
     })
   end
-  terms[opts.name]:toggle()
+  terms[opts.name]:toggle({ width = opts.width, height = opts.height })
   -- call setup function in autocommand
   local augroup_name = "tfling." .. opts.name .. ".config"
   vim.api.nvim_create_augroup(augroup_name, {
@@ -171,24 +256,51 @@ function TFling(opts)
     -- only apply in the buffer created for this program
     buffer = terms[opts.name].bufnr,
     callback = function()
-      Config.always()
-      opts.setup()
+      -- Create a table with terminal details to pass to the callback
+      local term_details = {
+        job_id = terms[opts.name].job_id,
+        bufnr = terms[opts.name].bufnr,
+        win_id = terms[opts.name].win_id,
+        name = opts.name,
+        cmd = opts.cmd,
+        selected_text = captured_selected_text, -- Use the captured text
+        -- Helper function to send commands to this terminal
+        send = function(command)
+          local term_instance = terms[opts.name]
+          if term_instance and term_instance.job_id then
+            -- Use per-terminal send_delay if provided, otherwise fall back to global config
+            local delay = opts.send_delay or Config.send_delay or 100
+            vim.defer_fn(function()
+              vim.api.nvim_chan_send(term_instance.job_id, command)
+            end, delay)
+          end
+        end,
+      }
+      Config.always(term_details)
+      opts.setup(term_details)
     end,
   })
 end
 
 Config = {
-  always = function() end,
+  always = function(term) end,
+  send_delay = 100, -- Default delay in milliseconds
 }
 
 --- @class SetupOpts
---- @field always? function callback ran in all tfling buffers
+--- @field always? fun(TFlingTermDetails) callback ran in all tfling buffers
+--- @field send_delay? number delay in milliseconds before sending commands (default: 100)
+---
 local function setup(opts)
   if opts.always ~= nil then
     Config.always = opts.always
   end
-  --- nothing yet
+  if opts.send_delay ~= nil then
+    Config.send_delay = opts.send_delay
+  end
 end
+
+vim.api.nvim_create_user_command("TFlingHideCurrent", M.hide_current, {})
 
 return {
   term = TFling,
