@@ -58,24 +58,76 @@ local function get_selected_text()
 end
 
 ---
--- Internal helper to calculate pixel geometry from percentages.
+-- Internal helper to parse window configuration.
 --
-function Terminal:_calculate_win_geometry(user_opts)
-  -- Default to 80% if not specified
-  local width_str = user_opts.width or "80%"
-  local height_str = user_opts.height or "80%"
+function Terminal:_parse_win_config(opts)
+  -- Handle backward compatibility
+  if opts.win then
+    return opts.win
+  else
+    -- Legacy mode: treat as floating window with center position
+    return {
+      type = "floating",
+      position = "center",
+      width = opts.width or "80%",
+      height = opts.height or "80%",
+      margin = "2%",
+    }
+  end
+end
+
+---
+-- Internal helper to calculate pixel geometry for floating windows.
+--
+function Terminal:_calculate_floating_geometry(win_config)
+  local width_str = win_config.width or "80%"
+  local height_str = win_config.height or "80%"
+  local margin_str = win_config.margin or "2%"
+  local position = win_config.position or "center"
 
   -- Calculate pixel values
   local width = math.floor(vim.o.columns * (tonumber((width_str:gsub("%%", ""))) / 100))
   local height = math.floor(vim.o.lines * (tonumber((height_str:gsub("%%", ""))) / 100))
+  local margin = math.floor(math.min(vim.o.lines, vim.o.columns) * (tonumber((margin_str:gsub("%%", ""))) / 100))
 
   -- Ensure it's not larger than the screen
   width = math.min(width, vim.o.columns - 2)
   height = math.min(height, vim.o.lines - 2)
 
-  -- Calculate centering
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
+  -- Calculate position based on placement
+  local row, col
+  if position == "center" then
+    row = math.floor((vim.o.lines - height) / 2)
+    col = math.floor((vim.o.columns - width) / 2)
+  elseif position == "top-left" then
+    row = margin
+    col = margin
+  elseif position == "top-center" then
+    row = margin
+    col = math.floor((vim.o.columns - width) / 2)
+  elseif position == "top-right" then
+    row = margin
+    col = vim.o.columns - width - margin
+  elseif position == "bottom-left" then
+    row = vim.o.lines - height - margin
+    col = margin
+  elseif position == "bottom-center" then
+    row = vim.o.lines - height - margin
+    col = math.floor((vim.o.columns - width) / 2)
+  elseif position == "bottom-right" then
+    row = vim.o.lines - height - margin
+    col = vim.o.columns - width - margin
+  elseif position == "left-center" then
+    row = math.floor((vim.o.lines - height) / 2)
+    col = margin
+  elseif position == "right-center" then
+    row = math.floor((vim.o.lines - height) / 2)
+    col = vim.o.columns - width - margin
+  else
+    -- Default to center if invalid position
+    row = math.floor((vim.o.lines - height) / 2)
+    col = math.floor((vim.o.columns - width) / 2)
+  end
 
   -- Return the full table for nvim_open_win
   return {
@@ -85,37 +137,42 @@ function Terminal:_calculate_win_geometry(user_opts)
     height = height,
     row = row,
     col = col,
-    border = "rounded", -- <<< THIS IS THE ONLY CHANGE
+    border = "rounded",
   }
 end
 
 function M:new(config)
-  if not config.cmd or not config.win_opts then
-    vim.notify("FloatingTerm:new() requires 'cmd' and 'win_opts'", vim.log.levels.ERROR)
+  if not config.cmd then
+    vim.notify("FloatingTerm:new() requires 'cmd'", vim.log.levels.ERROR)
     return
   end
 
   local self = setmetatable({}, Terminal)
   self.cmd = config.cmd
-  self.win_opts = config.win_opts -- This is the default percentage-based config
+  self.win_opts = config.win_opts or {} -- Legacy support
   self.bufnr = nil
   self.win_id = nil
   self.job_id = nil
   return self
 end
 
-function Terminal:toggle(win_opts)
+function Terminal:toggle(opts)
   if self.win_id and vim.api.nvim_win_is_valid(self.win_id) then
-    if win_opts then
-      local user_opts = win_opts
-      local final_win_opts = self:_calculate_win_geometry(user_opts)
-      vim.api.nvim_win_set_config(self.win_id, final_win_opts)
-      vim.api.nvim_set_current_win(self.win_id)
+    if opts then
+      local win_config = self:_parse_win_config(opts)
+      if win_config.type == "floating" then
+        local final_win_opts = self:_calculate_floating_geometry(win_config)
+        vim.api.nvim_win_set_config(self.win_id, final_win_opts)
+        vim.api.nvim_set_current_win(self.win_id)
+      else
+        -- For splits, just focus the existing window
+        vim.api.nvim_set_current_win(self.win_id)
+      end
     else
       self:hide()
     end
   else
-    self:open(win_opts)
+    self:open(opts)
   end
 end
 
@@ -131,34 +188,41 @@ end
 ---
 -- Opens the terminal window.
 --
-function Terminal:open(win_opts) -- win_opts is the new percentage config
-  -- 1. Get the percentage config to use
-  local user_opts = win_opts or self.win_opts
+function Terminal:open(opts)
+  -- 1. Parse window configuration
+  local win_config = self:_parse_win_config(opts)
 
-  -- 2. Calculate the final pixel geometry
-  local final_win_opts = self:_calculate_win_geometry(user_opts)
-
-  -- 3. If window is valid, just focus it
+  -- 2. If window is valid, just focus it
   if self.win_id and vim.api.nvim_win_is_valid(self.win_id) then
     vim.api.nvim_set_current_win(self.win_id)
     return
   end
 
-  -- 4. If buffer exists, re-open the window
+  -- 3. If buffer exists, create window based on type
   if self.bufnr and vim.api.nvim_buf_is_valid(self.bufnr) then
-    self.win_id = vim.api.nvim_open_win(self.bufnr, true, final_win_opts) -- Use calculated opts
+    if win_config.type == "floating" then
+      local final_win_opts = self:_calculate_floating_geometry(win_config)
+      self.win_id = vim.api.nvim_open_win(self.bufnr, true, final_win_opts)
+    else
+      self:_create_split_window(win_config)
+    end
     active_instances[self.win_id] = self
     self:setup_win_options()
     vim.cmd("startinsert")
     return
   end
 
-  -- 5. If new, create everything
+  -- 4. If new, create everything
   self.bufnr = vim.api.nvim_create_buf(true, true)
   vim.bo[self.bufnr].bufhidden = "hide"
   vim.bo[self.bufnr].filetype = "tfling"
 
-  self.win_id = vim.api.nvim_open_win(self.bufnr, true, final_win_opts) -- Use calculated opts
+  if win_config.type == "floating" then
+    local final_win_opts = self:_calculate_floating_geometry(win_config)
+    self.win_id = vim.api.nvim_open_win(self.bufnr, true, final_win_opts)
+  else
+    self:_create_split_window(win_config)
+  end
   active_instances[self.win_id] = self
   self:setup_win_options()
 
@@ -177,9 +241,43 @@ function Terminal:open(win_opts) -- win_opts is the new percentage config
   end)
 end
 
+function Terminal:_create_split_window(win_config)
+  local size_str = win_config.size
+  local size_percent = tonumber((size_str:gsub("%%", "")))
+  local actual_size
+
+  if win_config.direction == "top" or win_config.direction == "bottom" then
+    -- Horizontal split - calculate percentage of total lines
+    actual_size = math.floor(vim.o.lines * (size_percent / 100))
+    if win_config.direction == "top" then
+      vim.cmd("topleft split")
+    else
+      vim.cmd("botright split")
+    end
+    vim.cmd("resize " .. actual_size)
+  elseif win_config.direction == "left" or win_config.direction == "right" then
+    -- Vertical split - calculate percentage of total columns
+    actual_size = math.floor(vim.o.columns * (size_percent / 100))
+    if win_config.direction == "left" then
+      vim.cmd("topleft vsplit")
+    else
+      vim.cmd("botright vsplit")
+    end
+    vim.cmd("vertical resize " .. actual_size)
+  end
+
+  -- Get the current window ID after creating the split
+  self.win_id = vim.api.nvim_get_current_win()
+
+  -- Set the buffer to the terminal buffer
+  vim.api.nvim_win_set_buf(self.win_id, self.bufnr)
+end
+
 function Terminal:setup_win_options()
   local win_id = self.win_id
-  vim.wo[win_id].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
+  if self.win_config and self.win_config.type == "floating" then
+    vim.wo[win_id].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
+  end
   vim.wo[win_id].relativenumber = false
   vim.wo[win_id].number = false
   vim.wo[win_id].signcolumn = "no"
@@ -204,11 +302,24 @@ local terms = {}
 --- @field send function helper function to send commands to the terminal
 --- @field selected_text? string the text that was selected when triggered from visual mode
 
+--- @class TFlingFloatingWin
+--- @field type "floating"
+--- @field position? "top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-right" | "bottom-center" | "left-center" | "right-center" position of floating window (defaults to "center")
+--- @field width? string width as a percentage like "80%" (defaults to "80%")
+--- @field height? string height as a percentage like "80%" (defaults to "80%")
+--- @field margin? string margin as a percentage like "2%" (defaults to "2%")
+
+--- @class TFlingSplitWin
+--- @field type "split"
+--- @field direction string split direction: "top", "bottom", "left", "right"
+--- @field size string size as a percentage like "30%"
+
 --- @class TFlingTerm
 --- @field name? string the name (needs to be unique, defaults to cmd)
 --- @field cmd string the command/program to run
---- @field width? string width as a percentage like "80%" (defaults to "80%")
---- @field height? string height as a percentage like "80%" (defaults to "80%")
+--- @field win? TFlingFloatingWin|TFlingSplitWin window configuration (defaults to floating center)
+--- @field width? string width as a percentage like "80%" (deprecated, use win.width)
+--- @field height? string height as a percentage like "80%" (deprecated, use win.height)
 --- @field send_delay? number delay in milliseconds before sending commands (defaults to global config)
 --- @field setup? fun(details: TFlingTermDetails) function to run on mount (receives TFlingTermDetails table)
 
@@ -223,27 +334,16 @@ function TFling(opts)
     opts.name = opts.cmd
   end
 
-  -- Set default width and height to 80% if not provided
-  if opts.width == nil then
-    opts.width = "80%"
-  end
-  if opts.height == nil then
-    opts.height = "80%"
-  end
-
   -- Capture selected text BEFORE any buffer operations
   local captured_selected_text = get_selected_text()
 
   if terms[opts.name] == nil then
     terms[opts.name] = M:new({
       cmd = opts.cmd,
-      win_opts = {
-        width = opts.width,
-        height = opts.height,
-      },
+      win_opts = {}, -- Legacy support
     })
   end
-  terms[opts.name]:toggle({ width = opts.width, height = opts.height })
+  terms[opts.name]:toggle(opts)
   -- call setup function in autocommand
   local augroup_name = "tfling." .. opts.name .. ".config"
   vim.api.nvim_create_augroup(augroup_name, {
