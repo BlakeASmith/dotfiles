@@ -47,17 +47,36 @@ def config_zsh(args: Namespace):
     print("run with --edit-rc to do this automatically")
     print(keybinds_sh)
 
+def config_nvim(args: Namespace):
+    if not args.plugin:
+        print("set --plugin option. Nothing else here yet")
+
+    if args.plugin:
+        plugins_path = HOME/".config/nvim/lua/plugins"
+        plugin_install_path = plugins_path/f"{args.plugin}.lua"
+        plugin_impl_path = HERE/f"nvim/lua/plugins/{args.plugin}.lua"
+
+        plugin_install_path.symlink_to(plugin_impl_path)
+        print(f"created symlink from {plugin_impl_path} to {plugin_install_path}")
+
+
 
 dispatch = {
-    "zsh": config_zsh
+    "zsh": config_zsh,
+    "nvim": config_nvim
 }
 
 if __name__ == '__main__':
     parser = ArgumentParser("dotfiles-installer")
     subparsers = parser.add_subparsers(dest="_program")
+
     zsh = subparsers.add_parser("zsh")
     _ = zsh.add_argument("--edit-rc", help="whether to modify the zshrc file", action="store_true")
     _ = zsh.add_argument("--replace", help="whether to modify the zshrc file", action="store_true")
+
+    nvim = subparsers.add_parser("nvim")
+    _ = nvim.add_argument("--plugin", choices=["tfling"])
+
 
     args= parser.parse_args()
 
