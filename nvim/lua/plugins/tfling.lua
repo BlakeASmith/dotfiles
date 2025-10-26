@@ -576,7 +576,7 @@ function TFling(opts)
                 local current_height = vim.api.nvim_win_get_height(win_id)
                 local current_width = vim.api.nvim_win_get_width(win_id)
                 local size_percent
-                
+
                 if options.direction == "top" or options.direction == "bottom" then
                   size_percent = math.floor(current_height * 100 / vim.o.lines)
                 else
@@ -585,7 +585,7 @@ function TFling(opts)
 
                 -- Close current window
                 vim.api.nvim_win_close(win_id, true)
-                
+
                 -- Create new split in the specified direction
                 local win_config = {
                   type = "split",
@@ -861,7 +861,10 @@ vim.api.nvim_create_user_command("TFlingRepositionCurrent", function(opts)
 
   -- If no arguments provided, show usage
   if vim.tbl_isempty(reposition_options) then
-    vim.notify("Usage: TFlingRepositionCurrent [position=<pos>] [row=<value>] [col=<value>] [direction=<dir>]", vim.log.levels.INFO)
+    vim.notify(
+      "Usage: TFlingRepositionCurrent [position=<pos>] [row=<value>] [col=<value>] [direction=<dir>]",
+      vim.log.levels.INFO
+    )
     vim.notify("Examples:", vim.log.levels.INFO)
     vim.notify("  TFlingRepositionCurrent position=top-left", vim.log.levels.INFO)
     vim.notify("  TFlingRepositionCurrent row=+10 col=+20", vim.log.levels.INFO)
@@ -946,7 +949,7 @@ vim.api.nvim_create_user_command("TFlingRepositionCurrent", function(opts)
         local current_height = vim.api.nvim_win_get_height(win_id)
         local current_width = vim.api.nvim_win_get_width(win_id)
         local size_percent
-        
+
         if options.direction == "top" or options.direction == "bottom" then
           size_percent = math.floor(current_height * 100 / vim.o.lines)
         else
@@ -955,7 +958,7 @@ vim.api.nvim_create_user_command("TFlingRepositionCurrent", function(opts)
 
         -- Close current window
         vim.api.nvim_win_close(win_id, true)
-        
+
         -- Create new split in the specified direction
         local win_config = {
           type = "split",
@@ -976,7 +979,7 @@ end, {
     return {
       "position=center",
       "position=top-left",
-      "position=top-center", 
+      "position=top-center",
       "position=top-right",
       "position=bottom-left",
       "position=bottom-center",
@@ -988,7 +991,7 @@ end, {
       "row=50%",
       "row=25%",
       "col=+10",
-      "col=+20", 
+      "col=+20",
       "col=50%",
       "col=25%",
       "direction=top",
