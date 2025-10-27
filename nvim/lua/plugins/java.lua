@@ -3,10 +3,8 @@ local jdtls_plugin = {
 	opts = function()
 		-- Assuming we've installed jdtls using Mason.nvim
 		-- If this is not the case for you, change this to your jdtls binary path
-		local cmd = { vim.fn.expand("$MASON/bin/jdtls") }
-		-- Assuming we've installed lombok-nightly using Mason.vim
-		-- If not, you can replace this with the path to your lombok.jar file
-		local lombok_jar = vim.fn.expand("$MASON/share/lombok-nightly/lombok.jar")
+		local cmd = { vim.fn.expand("$HOME/.local/share/nvim/mason/bin/jdtls") }
+		local lombok_jar = vim.fn.expand("$HOME/.local/share/nvim/mason/share/jdtls/lombok.jar")
 		table.insert(cmd, string.format("--jvm-arg=-javaagent:%s", lombok_jar))
 
 		return {
