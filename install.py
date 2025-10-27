@@ -32,7 +32,14 @@ def symlink_rec(source: Path, destination: Path, quiet: bool = False):
             rel = item.relative_to(source)
             dest = destination / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.symlink_to(item)
+            try:
+                dest.symlink_to(item)
+            except:
+                if not quiet:
+                    print(
+                        f"- failed to symlink {item} to {dest} (probably already exists)"
+                    )
+
             if not quiet:
                 print(f"- symlinked {item} to {dest}")
 
