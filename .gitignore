@@ -4,3 +4,4 @@
 /awesomewm/.rc.org.~undo-tree~
 python/fencing/fencing.egg-info
 python/fencing/fencing/__pycache__
+nvim/lazy-lock.json

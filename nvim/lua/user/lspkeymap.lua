@@ -2,6 +2,7 @@
 ---
 vim.lsp.enable("basedpyright")
 vim.lsp.enable("lua-ls")
+vim.lsp.enable("jdtls")
 
 -- Some default mappings, but listing here so I remember
 -- ]d next diagnostic
