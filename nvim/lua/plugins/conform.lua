@@ -1,6 +1,6 @@
 return {
 	{
-		"mason-org/mason.nvim",
+		"stevearc/conform.nvim",
 		opts = {},
 	},
 }
