@@ -48,6 +48,13 @@ def config_zsh(args: Namespace):
     print(keybinds_sh)
 
 def config_nvim(args: Namespace):
+    if args.mode == "all":
+        nvim_path = HOME/".config/nvim"
+        all_path = HERE/"nvim"
+        nvim_path.symlink_to(all_path)
+        print(f"symlinked entire nvim config to {nvim_path}")
+        return
+
     if not args.plugin:
         print("set --plugin option. Nothing else here yet")
 
@@ -75,7 +82,8 @@ if __name__ == '__main__':
     _ = zsh.add_argument("--replace", help="whether to modify the zshrc file", action="store_true")
 
     nvim = subparsers.add_parser("nvim")
-    _ = nvim.add_argument("--plugin", choices=["tfling"])
+    _ = nvim.add_argument("--plugin", choices=["tfling"], default=None)
+    _ = nvim.add_argument("mode", default="selective", choices=["selective", "all"])
 
 
     args= parser.parse_args()
