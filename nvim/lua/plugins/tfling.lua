@@ -58,13 +58,11 @@ return {
         tfling.term({
           name = "LazyGit",
           cmd = "lazygit",
-          send_delay = 700,
           win = {
             type = "floating",
-            height = "80%",
-            width = "60%",
-            position = "top-right",
-            margin = "0%",
+            height = "100%",
+            width = "100%",
+            position = "center",
           },
           setup = function(term) end,
         })
