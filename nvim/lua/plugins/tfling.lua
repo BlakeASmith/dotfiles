@@ -17,12 +17,17 @@ return {
 					-- single esc to get to normal mode
 					-- may not work with programs which require esc input
 					vim.keymap.set({ "t" }, "<Esc>", "<C-\\><C-n>", { buffer = true })
+
+					vim.keymap.set({ "n", "t" }, "<C-f>", function()
+						vim.cmd(":TFlingResizeCurrent width=80% height=80%")
+					end, { buffer = true })
 				end,
 			})
 
 			vim.keymap.set({ "n", "v" }, "<leader>ai", function()
 				tfling.term({
 					cmd = "cursor-agent",
+					tmux = true,
 					send_delay = 700,
 					setup = function(term)
 						local selected = term.selected_text
@@ -37,6 +42,7 @@ return {
 				tfling.term({
 					name = "cursor-agent-top",
 					cmd = "cursor-agent",
+					tmux = true,
 					send_delay = 700,
 					win = {
 						type = "floating",
@@ -58,6 +64,7 @@ return {
 				tfling.term({
 					name = "LazyGit",
 					cmd = "lazygit",
+					tmux = true,
 					win = {
 						type = "floating",
 						height = "100%",
@@ -72,6 +79,7 @@ return {
 				tfling.term({
 					name = "shell",
 					cmd = "zsh",
+					tmux = true,
 					send_delay = 1000,
 					win = {
 						type = "floating",
@@ -91,58 +99,11 @@ return {
 				})
 			end)
 
-			vim.keymap.set({ "n", "v" }, "<leader>ab", function()
-				tfling.term({
-					name = "bash",
-					cmd = "bash",
-					send_delay = 1000,
-					win = {
-						type = "floating",
-						height = "40%",
-						width = "50%",
-						position = "top-right",
-						margin = "5%",
-					},
-					setup = function(term)
-						local selected = term.selected_text
-						if selected ~= nil then
-							term.send(selected)
-						end
-
-						vim.keymap.set({ "t", "n" }, "<C-c><C-c>", "<C-d>", { buffer = true })
-					end,
-				})
-			end)
-
-			-- because I can
-			vim.keymap.set({ "n", "v" }, "<leader>av", function()
-				tfling.term({
-					name = "vim",
-					cmd = "vim",
-					send_delay = 1000,
-					win = {
-						type = "floating",
-						height = "70%",
-						width = "50%",
-						position = "top-right",
-						margin = "10%",
-					},
-					setup = function(term)
-						local selected = term.selected_text
-						if selected ~= nil then
-							term.send(selected)
-						end
-
-						vim.keymap.set({ "t", "n" }, "<C-c><C-c>", "<C-d>", { buffer = true })
-					end,
-				})
-			end)
-
-			-- because I can
 			vim.keymap.set({ "n", "v" }, "<leader>ar", function()
 				tfling.term({
 					name = "ranger",
 					cmd = "ranger",
+					tmux = true,
 					send_delay = 1000,
 					win = {
 						type = "floating",
@@ -161,6 +122,7 @@ return {
 				tfling.term({
 					cmd = "opencode",
 					send_delay = 700,
+					tmux = true,
 					win = {
 						type = "split",
 						direction = "right",

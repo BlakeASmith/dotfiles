@@ -5,5 +5,6 @@ require("user.fuzzy")
 
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
+vim.o.cursorline = false
 
 vim.cmd("colorscheme gruvbox")
