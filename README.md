@@ -26,7 +26,7 @@ added to the end of your .zshrc:
 bindkey "^p" up-line-or-search
 bindkey "^n" down-line-or-search
 ### KEYBINDINGS ###
-``
+```
 
 Or, If I want to be more cautious, I can skip the `--edit-rc` flag and the script will print the config out. The 
 `--replace` will overwrite the content of the block with the latest version in the case the block is already
