@@ -4,7 +4,7 @@ from pathlib import Path
 
 fencing_path = Path(__file__).parent / "python/fencing"
 sys.path.append(str(fencing_path))
-from fencing import CodeFence
+from fencing import CodeFence, FencedBlock
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -45,40 +45,64 @@ def symlink_rec(source: Path, destination: Path, quiet: bool = False):
 
 
 def config_zsh(args: Namespace):
-    keybinds_path = HERE / "zsh/keybinds.sh"
-    keybinds_sh = keybinds_path.read_text()
-    keybinds_block = KEYBINDINGS_FENCE.find_blocks(keybinds_sh)[0]
-
     rc_path = HOME / ".zshrc"
     rc_sh = rc_path.read_text()
 
-    existing_blocks = KEYBINDINGS_FENCE.find_blocks(rc_sh)
+    def install_block(
+        fence: CodeFence, source: Path, replace: bool = False, edit: bool = True
+    ):
+        block = fence.find_blocks(source.read_text())[0]
+        existing_blocks = fence.find_blocks(rc_sh)
+        # expect zero or one existing_blocks
+        if len(existing_blocks) > 1:
+            print("\n...".join((block.text for block in existing_blocks)))
+            raise ValueError(
+                f"You .zshrc has two or more existing blocks matching the {fence}, I don't know what to do here"
+            )
 
-    # expect zero or one existing_blocks
-    if len(existing_blocks) > 1:
-        print("\n...".join((block.text for block in existing_blocks)))
-        raise ValueError(
-            "You .zshrc has two KEYBINDINGS existing_blocks, I don't know what to do here"
-        )
-
-    if existing_blocks:
-        if args.replace:
-            _ = existing_blocks[0].replace(keybinds_block.content, rc_path)
-            print("replaced content with latest")
+        if existing_blocks:
+            if replace:
+                _ = existing_blocks[0].replace(block.content, rc_path)
+                print("replaced content with latest")
+                print(block.content)
+                return
+            print(
+                "you already have this config installed! Use --replace if you want to overwrite it"
+            )
+            print(existing_blocks[0].text)
             return
-        print("you already have this config installed")
-        print(existing_blocks[0].text)
-        return
 
-    if args.edit_rc:
-        keybinds_block.append_to(rc_path)
+        if not edit:
+            print("# add to your .zshrc")
+            print("run with --edit-rc to do this automatically")
+            print(block.text)
+            return
+
+        block.append_to(rc_path)
         print("added to the end of your .zshrc:")
-        print(keybinds_block.text)
+        print(block.text)
+
+    configs = {
+        "keybindings": {"fence": KEYBINDINGS_FENCE, "source": HERE / "zsh/keybinds.sh"}
+    }
+
+    if args.config == "all":
+        for conf in configs.values():
+            install_block(
+                fence=conf["fence"],
+                source=conf["source"],
+                edit=args.edit_rc,
+                replace=args.replace,
+            )
         return
 
-    print("# add to your .zshrc")
-    print("run with --edit-rc to do this automatically")
-    print(keybinds_sh)
+    conf = configs[args.config]
+    install_block(
+        fence=conf["fence"],
+        source=conf["source"],
+        edit=args.edit_rc,
+        replace=args.replace,
+    )
 
 
 def config_nvim(args: Namespace):
@@ -112,6 +136,7 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="_program")
 
     zsh = subparsers.add_parser("zsh")
+    _ = zsh.add_argument("config", default="all", choices=["all", "keybindings"])
     _ = zsh.add_argument(
         "--edit-rc", help="whether to modify the zshrc file", action="store_true"
     )
