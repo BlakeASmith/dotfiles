@@ -1,0 +1,5 @@
+### SSH MULTIPLEXING ###
+ControlMaster auto
+ControlPath ~/.ssh/sockets/socket-%r@%h:%p
+ControlPersist 120
+### SSH MULTIPLEXING ###

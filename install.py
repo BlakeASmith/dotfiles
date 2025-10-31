@@ -15,6 +15,11 @@ KEYBINDINGS_FENCE = CodeFence(
     end="### KEYBINDINGS ###",
 )
 
+SSH_MULTIPLEXING_FENCE = CodeFence(
+    start="### SSH MULTIPLEXING ###",
+    end="### SSH MULTIPLEXING ###",
+)
+
 
 def symlink_rec(source: Path, destination: Path, quiet: bool = False):
     """Recursively symlink all leaf files from source to destination.
@@ -158,58 +163,51 @@ def config_ssh(args: Namespace):
     sockets_dir.mkdir(mode=0o700, exist_ok=True)
     print(f"created sockets directory: {sockets_dir}")
 
-    # SSH multiplexing configuration lines
-    multiplex_config = "ControlMaster auto\nControlPath ~/.ssh/sockets/socket-%r@%h:%p\nControlPersist 120\n"
-
     # Read existing config if it exists
     existing_config = ""
     if ssh_config.exists():
         existing_config = ssh_config.read_text()
 
-    # Check if multiplexing config already exists
-    if "ControlMaster auto" in existing_config:
-        if args.replace:
-            # Remove existing multiplexing config block
-            lines = existing_config.split("\n")
-            new_lines = []
-            skip_block = False
-            for line in lines:
-                if line.strip() in ["ControlMaster auto", "ControlPath ~/.ssh/sockets/socket-%r@%h:%p", "ControlPersist 120"]:
-                    skip_block = True
-                    continue
-                if skip_block and line.strip() == "":
-                    skip_block = False
-                    continue
-                if not skip_block:
-                    new_lines.append(line)
-            existing_config = "\n".join(new_lines)
-            # Append new config
-            if existing_config and not existing_config.endswith("\n"):
-                existing_config += "\n"
-            existing_config += multiplex_config
-            ssh_config.write_text(existing_config)
-            print("replaced existing SSH multiplexing configuration")
-            print(multiplex_config)
-        else:
-            print("SSH multiplexing configuration already exists! Use --replace to overwrite it")
-            # Show existing config
-            lines = existing_config.split("\n")
-            in_block = False
-            for line in lines:
-                if "ControlMaster" in line or "ControlPath" in line or "ControlPersist" in line:
-                    in_block = True
-                    print(line)
-                elif in_block and line.strip() == "":
-                    break
-        return
+    def install_block(
+        fence: CodeFence, source: Path, replace: bool = False, edit: bool = True
+    ):
+        block = fence.find_blocks(source.read_text())[0]
+        existing_blocks = fence.find_blocks(existing_config)
+        # expect zero or one existing_blocks
+        if len(existing_blocks) > 1:
+            print("\n...".join((block.text for block in existing_blocks)))
+            raise ValueError(
+                f"Your SSH config has two or more existing blocks matching the {fence}, I don't know what to do here"
+            )
 
-    # Append new config
-    if existing_config and not existing_config.endswith("\n"):
-        existing_config += "\n"
-    existing_config += multiplex_config
-    ssh_config.write_text(existing_config)
-    print("added SSH multiplexing configuration to ~/.ssh/config:")
-    print(multiplex_config)
+        if existing_blocks:
+            if replace:
+                _ = existing_blocks[0].replace(block.content, ssh_config)
+                print("replaced content with latest")
+                print(block.content)
+                return
+            print(
+                "you already have this config installed! Use --replace if you want to overwrite it"
+            )
+            print(existing_blocks[0].text)
+            return
+
+        if not edit:
+            print("# add to your ~/.ssh/config")
+            print("run with --edit-config to do this automatically")
+            print(block.text)
+            return
+
+        block.append_to(ssh_config)
+        print("added to the end of your ~/.ssh/config:")
+        print(block.text)
+
+    install_block(
+        fence=SSH_MULTIPLEXING_FENCE,
+        source=HERE / "ssh/multiplexing",
+        edit=args.edit_config,
+        replace=args.replace,
+    )
 
 
 dispatch = {
@@ -245,6 +243,9 @@ if __name__ == "__main__":
     lazygit = subparsers.add_parser("lazygit", aliases=["lg"])
 
     ssh = subparsers.add_parser("ssh")
+    _ = ssh.add_argument(
+        "--edit-config", help="whether to modify the SSH config file", action="store_true"
+    )
     _ = ssh.add_argument(
         "--replace", help="whether to replace existing SSH multiplexing config", action="store_true"
     )
