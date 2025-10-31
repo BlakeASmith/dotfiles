@@ -24,12 +24,16 @@ vim.g.maplocalleader = "\\"
 -- Setup lazy.nvim
 require("lazy").setup({
 	spec = {
-		-- import your plugins
-		{ import = "plugins" },
+		-- Common plugins (load in both VSCode and Neovim)
+		{ import = "plugins.common" },
+		-- VSCode-specific plugins (only load in VSCode)
+		{ import = "plugins.vscode.commentary", cond = vim.g.vscode },
+		-- Regular plugins (only load in standalone Neovim)
+		{ import = "plugins", cond = not vim.g.vscode },
 	},
 	-- Configure any other settings here. See the documentation for more details.
 	-- colorscheme that will be used when installing plugins.
 	install = { colorscheme = { "habamax" } },
 	-- automatically check for plugin updates
-	checker = { enabled = true },
+	checker = { enabled = not vim.g.vscode },
 })
