@@ -27,11 +27,10 @@ return {
 					--     require('luasnip.loaders.from_vscode').lazy_load()
 					--   end,
 					-- },
-				},
-				opts = {},
 			},
-			"folke/lazydev.nvim",
+			opts = {},
 		},
+	},
 		--- @module 'blink.cmp'
 		--- @type blink.cmp.Config
 		opts = {
