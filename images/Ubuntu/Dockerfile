@@ -77,13 +77,22 @@ RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     bash /opt/dotfiles/brew/base-utils.sh || true
 
 # Install rust for root user
+# Order: rust install (sets up rustup/cargo) -> cargo available -> bob install via crates.sh -> bob/install.py
 WORKDIR /opt/dotfiles/rust
 RUN chmod +x install.sh crates.sh && \
     chmod +x /opt/dotfiles/bin/install-fence && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     bash install.sh || true
 
-# Install bob for root user
+# Ensure cargo is in PATH for subsequent steps
+RUN export PATH="$HOME/.cargo/bin:$PATH" && \
+    [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env" || true && \
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /root/.bashrc && \
+    [ -f "$HOME/.cargo/env" ] && echo '. "$HOME/.cargo/env"' >> /root/.bashrc || true && \
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /root/.zshrc || true && \
+    [ -f "$HOME/.cargo/env" ] && echo '. "$HOME/.cargo/env"' >> /root/.zshrc || true
+
+# Install bob for root user (needs cargo from rust installation)
 WORKDIR /opt/dotfiles/bob
 RUN chmod +x install.py && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
@@ -106,13 +115,22 @@ RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     fi
 
 # Install rust for ubuntu user
+# Order: rust install (sets up rustup/cargo) -> cargo available -> bob install via crates.sh -> bob/install.py
 WORKDIR /opt/dotfiles/rust
 RUN chmod +x install.sh crates.sh && \
     chmod +x /opt/dotfiles/bin/install-fence && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     bash install.sh || true
 
-# Install bob for ubuntu user
+# Ensure cargo is in PATH for subsequent steps (ubuntu user)
+RUN export PATH="$HOME/.cargo/bin:$PATH" && \
+    [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env" || true && \
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/ubuntu/.bashrc && \
+    [ -f "$HOME/.cargo/env" ] && echo '. "$HOME/.cargo/env"' >> /home/ubuntu/.bashrc || true && \
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/ubuntu/.zshrc || true && \
+    [ -f "$HOME/.cargo/env" ] && echo '. "$HOME/.cargo/env"' >> /home/ubuntu/.zshrc || true
+
+# Install bob for ubuntu user (needs cargo from rust installation)
 WORKDIR /opt/dotfiles/bob
 RUN chmod +x install.py && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
