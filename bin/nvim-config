@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+#
+# Non-interactive Neovim config file reader and searcher
+# Usage:
+#   nvim-config read <file>     # Read a config file (e.g., "init", "lua/user/format")
+#   nvim-config search <query>  # Search all config files for a query
+#   nvim-config list            # List all config files
+#   nvim-config tree            # Show config file structure
+
+set -euo pipefail
+
+# Find the nvim config directory from dotfiles repo
+find_nvim_config_dir() {
+    # Get the directory where this script is located
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Find the dotfiles root and nvim config
+    local dotfiles_root
+    dotfiles_root="$(dirname "$script_dir")"
+    
+    local nvim_config="$dotfiles_root/nvim"
+    
+    if [[ ! -d "$nvim_config" ]]; then
+        echo "Error: Could not find nvim config directory at $nvim_config" >&2
+        exit 1
+    fi
+    
+    echo "$nvim_config"
+}
+
+NVIM_CONFIG_DIR=$(find_nvim_config_dir)
+
+# Show config file tree
+show_tree() {
+    # Use find to show tree structure for lua and vim files
+    find "$NVIM_CONFIG_DIR" \
+        -type f \
+        \( -name "*.lua" -o -name "*.vim" -o -name "init.lua" \) \
+        ! -name "lazy-lock.json" \
+        ! -path "*/node_modules/*" \
+        ! -path "*/.git/*" \
+        2>/dev/null | \
+        sed "s|^$NVIM_CONFIG_DIR/||" | \
+        sort
+}
+
+# List all config files with descriptions
+list_files() {
+    show_tree | while read -r file; do
+        echo "$file"
+    done
+}
+
+# Read a specific config file
+read_file() {
+    local file_path="$1"
+    
+    # Construct full path
+    local full_path="$NVIM_CONFIG_DIR/$file_path"
+    
+    # Add .lua extension if not present and file doesn't exist
+    if [[ ! -f "$full_path" ]] && [[ -f "$full_path.lua" ]]; then
+        full_path="$full_path.lua"
+    fi
+    
+    if [[ ! -f "$full_path" ]]; then
+        echo "Error: Config file '$file_path' not found" >&2
+        echo "Try 'nvim-config list' to see available files" >&2
+        exit 1
+    fi
+    
+    cat "$full_path"
+}
+
+# Search all config files
+search_config() {
+    local query="$1"
+    
+    # Search for the query in all lua and vim files
+    find "$NVIM_CONFIG_DIR" \
+        -type f \
+        \( -name "*.lua" -o -name "*.vim" \) \
+        ! -name "lazy-lock.json" \
+        ! -path "*/node_modules/*" \
+        ! -path "*/.git/*" \
+        2>/dev/null | \
+        while read -r file; do
+            # Search with context and show file path
+            if grep -q "$query" "$file" 2>/dev/null; then
+                echo "=== $(echo "$file" | sed "s|^$NVIM_CONFIG_DIR/||") ==="
+                grep -n "$query" "$file" 2>/dev/null || true
+                echo
+            fi
+        done
+}
+
+# Main
+main() {
+    local command="${1:-tree}"
+    
+    case "$command" in
+        tree)
+            show_tree
+            ;;
+        list)
+            list_files
+            ;;
+        read)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: read requires a file path" >&2
+                echo "Usage: nvim-config read <file>" >&2
+                exit 1
+            fi
+            read_file "$2"
+            ;;
+        search)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: search requires a query" >&2
+                echo "Usage: nvim-config search <query>" >&2
+                exit 1
+            fi
+            search_config "$2"
+            ;;
+        *)
+            echo "Error: Unknown command '$command'" >&2
+            echo "Usage: nvim-config {tree|list|read|search}" >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
+

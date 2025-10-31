@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#
+# Non-interactive Neovim help documentation reader
+# Usage:
+#   nvim-help <topic>          # Read a specific help topic
+#   nvim-help search <query>   # Search all help files for a query
+#   nvim-help toc              # Show table of contents
+#   nvim-help list             # List all help files
+
+set -euo pipefail
+
+# Find Neovim runtime doc directory
+find_nvim_doc_dir() {
+    # Try to find the doc directory based on nvim installation
+    local nvim_bin
+    nvim_bin=$(which nvim 2>/dev/null || command -v nvim 2>/dev/null || echo "")
+    
+    if [[ -z "$nvim_bin" ]]; then
+        echo "Error: nvim not found in PATH" >&2
+        exit 1
+    fi
+    
+    # For macOS Homebrew
+    if [[ "$nvim_bin" == */Cellar/neovim/*/bin/nvim ]]; then
+        local nvim_root
+        nvim_root=$(dirname "$(dirname "$nvim_bin")")
+        if [[ -d "$nvim_root/share/nvim/runtime/doc" ]]; then
+            echo "$nvim_root/share/nvim/runtime/doc"
+            return 0
+        fi
+    fi
+    
+    # For standard installations
+    local nvim_root
+    nvim_root=$(dirname "$(dirname "$nvim_bin")")
+    if [[ -d "$nvim_root/share/nvim/runtime/doc" ]]; then
+        echo "$nvim_root/share/nvim/runtime/doc"
+        return 0
+    fi
+    
+    # Try common system paths
+    for path in /usr/share/nvim/runtime/doc /usr/local/share/nvim/runtime/doc; do
+        if [[ -d "$path" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    
+    echo "Error: Could not find Neovim documentation directory" >&2
+    exit 1
+}
+
+NVIM_DOC_DIR=$(find_nvim_doc_dir)
+
+# Show table of contents
+show_toc() {
+    cat "$NVIM_DOC_DIR/usr_toc.txt"
+}
+
+# List all help files
+list_files() {
+    ls -1 "$NVIM_DOC_DIR"/*.txt | sed 's|.*/||' | sort
+}
+
+# Read a specific help topic
+read_topic() {
+    local topic="$1"
+    local file="$NVIM_DOC_DIR/${topic}"
+    
+    # Add .txt extension if not present
+    if [[ ! -f "$file" ]] && [[ -f "$file.txt" ]]; then
+        file="$file.txt"
+    fi
+    
+    if [[ ! -f "$file" ]]; then
+        echo "Error: Help topic '$topic' not found" >&2
+        echo "Try 'nvim-help list' to see available topics" >&2
+        exit 1
+    fi
+    
+    cat "$file"
+}
+
+# Search all help files
+search_help() {
+    local query="$1"
+    
+    # Search for the query in all help files
+    grep -r -i "$query" "$NVIM_DOC_DIR"/*.txt | \
+        head -100 | \
+        sed 's|.*/doc/||' | \
+        sed 's|:|: |'
+}
+
+# Main
+main() {
+    local command="${1:-toc}"
+    
+    case "$command" in
+        toc)
+            show_toc
+            ;;
+        list)
+            list_files
+            ;;
+        search)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: search requires a query" >&2
+                echo "Usage: nvim-help search <query>" >&2
+                exit 1
+            fi
+            search_help "$2"
+            ;;
+        *)
+            read_topic "$command"
+            ;;
+    esac
+}
+
+main "$@"
+

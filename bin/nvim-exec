@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#
+# Execute Lua code in a Neovim context with user config and plugins loaded
+# Usage:
+#   nvim-exec 'print(vim.g.mapleader)'
+#   nvim-exec -f script.lua
+#   echo 'vim.cmd("colorscheme")' | nvim-exec
+
+set -euo pipefail
+
+# Parse arguments
+execute_file=false
+lua_code=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -f|--file)
+            execute_file=true
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: -f requires a file path" >&2
+                exit 1
+            fi
+            lua_code="${2}"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Usage: nvim-exec [OPTIONS] [LUA_CODE]"
+            echo ""
+            echo "Execute Lua code in Neovim context with user config loaded."
+            echo ""
+            echo "Options:"
+            echo "  -f, --file FILE    Read Lua code from file"
+            echo "  -h, --help         Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  nvim-exec 'print(vim.g.mapleader)'"
+            echo "  nvim-exec -f script.lua"
+            echo "  echo 'vim.cmd(\"colorscheme\")' | nvim-exec"
+            exit 0
+            ;;
+        *)
+            if [[ -z "$lua_code" ]]; then
+                lua_code="$1"
+            else
+                echo "Error: Multiple code arguments provided" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# If no lua_code provided, read from stdin
+if [[ -z "$lua_code" ]]; then
+    lua_code=$(cat)
+fi
+
+# If lua_code is still empty, error
+if [[ -z "$lua_code" ]]; then
+    echo "Error: No Lua code provided" >&2
+    exit 1
+fi
+
+# Create temporary file for Lua code
+temp_file=$(mktemp)
+cleanup() {
+    rm -f "$temp_file"
+}
+trap cleanup EXIT
+
+if [[ "$execute_file" == true ]]; then
+    # Read from file
+    if [[ ! -f "$lua_code" ]]; then
+        echo "Error: File '$lua_code' not found" >&2
+        exit 1
+    fi
+    cp "$lua_code" "$temp_file"
+else
+    # Use provided code
+    echo "$lua_code" > "$temp_file"
+fi
+
+# Execute in Neovim with user config loaded
+nvim --headless \
+    -c "lua dofile('$temp_file')" \
+    -c "qa" \
+    2>&1
+
