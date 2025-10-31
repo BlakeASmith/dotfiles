@@ -1,49 +1,40 @@
---- Example usage of tmux control mode client
--- This shows how to use the minimal tmux client in Neovim
+--- Example usage of tmux control mode client with terminal buffer
+-- This shows how to use the minimal tmux client in Neovim with terminal buffer integration
 
 local tmux = require("user.tmux_client")
 
 -- Create a client instance
 local client = tmux.new()
 
--- List all sessions
+-- Attach a terminal buffer to display tmux pane output
+local bufnr = client:attach_terminal_buffer()
+
+-- Open the buffer in a vertical split
+client:open_terminal_window("vertical")
+
+-- Now commands sent to the pane will appear in the buffer
+-- and outputs will be refreshed automatically
+
+-- Send a command to the pane (will appear in buffer as "$ echo hello")
+client:send_to_pane("echo 'Hello from tmux client'")
+
+-- Send another command
+vim.defer_fn(function()
+    client:send_to_pane("pwd")
+end, 1000)
+
+-- The buffer will automatically refresh every 500ms (default)
+-- showing the current pane output
+
+-- You can also manually refresh
+-- client:refresh_buffer()
+
+-- Example: List sessions (this won't show in terminal buffer, it's a tmux command)
 local sessions = client:list_sessions()
 print("Sessions:")
 for _, session in ipairs(sessions) do
     print("  - " .. session)
 end
 
--- List windows
-local windows = client:list_windows()
-print("\nWindows:")
-for _, window in ipairs(windows) do
-    print("  - " .. window)
-end
-
--- Get pane ID (assumes only one pane)
-local pane_id = client:get_pane_id()
-print("\nPane ID: " .. (pane_id or "(none)"))
-
--- Get pane output
-local output = client:get_pane_output()
-if output then
-    print("\nPane output (last 10 lines):")
-    local lines = {}
-    for line in output:gmatch("[^\n]+") do
-        table.insert(lines, line)
-    end
-    local start = math.max(1, #lines - 9)
-    for i = start, #lines do
-        print("  " .. lines[i])
-    end
-end
-
--- Send a command to the pane
--- client:send_to_pane("echo 'Hello from tmux client'")
-
--- Example: Get tmux prefix key
-local result = client:send_command("show-options -g prefix")
-print("\nTmux prefix key: " .. (result.response[1] or "(unknown)"))
-
--- Close the client when done
-client:close()
+-- Close the client when done (stops the refresh timer)
+-- client:close()

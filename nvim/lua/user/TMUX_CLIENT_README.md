@@ -11,6 +11,8 @@ A minimal Lua client for tmux control mode (`-C` flag) with persistent connectio
 
 ## Usage
 
+### Basic Usage
+
 ```lua
 local tmux = require("user.tmux_client")
 
@@ -23,21 +25,35 @@ for _, session in ipairs(sessions) do
     print(session)
 end
 
--- List windows
-local windows = client:list_windows()
-
--- Get pane ID (assumes only one pane)
-local pane_id = client:get_pane_id()
-
--- Get pane output
-local output = client:get_pane_output()
-
 -- Send command to pane
 client:send_to_pane("echo 'Hello'")
+```
 
--- Send arbitrary tmux command
-local result = client:send_command("show-options -g prefix")
-print(result.response[1])  -- e.g., "prefix C-b"
+### Terminal Buffer Integration
+
+```lua
+local tmux = require("user.tmux_client")
+
+-- Create a client
+local client = tmux.new()
+
+-- Attach a terminal buffer to display tmux pane output
+local bufnr = client:attach_terminal_buffer()
+
+-- Open the buffer in a window (vertical split)
+client:open_terminal_window("vertical")
+
+-- Now commands sent to the pane will appear in the buffer
+-- with "$ " prefix, and outputs will refresh automatically
+client:send_to_pane("pwd")
+client:send_to_pane("ls -la")
+
+-- The buffer refreshes every 500ms (default) to show pane output
+-- You can customize the refresh interval:
+-- client:attach_terminal_buffer(nil, 1000) -- 1 second refresh
+
+-- Manually refresh if needed
+client:refresh_buffer()
 ```
 
 ## API
@@ -71,8 +87,31 @@ Returns an array of session names.
 ### `client:list_windows()`
 Returns an array of window information strings.
 
+### `client:attach_terminal_buffer(bufnr, refresh_interval)`
+Attaches a Neovim buffer to display tmux pane output.
+
+**Parameters:**
+- `bufnr` (number|nil): Existing buffer number (creates new if nil)
+- `refresh_interval` (number, optional): Refresh interval in milliseconds (default: 500)
+
+**Returns:** Buffer number
+
+**Behavior:**
+- Creates a buffer that displays the current tmux pane output
+- Automatically refreshes at the specified interval
+- Shows commands sent via `send_to_pane()` with "$ " prefix
+
+### `client:open_terminal_window(split)`
+Opens the terminal buffer in a window.
+
+**Parameters:**
+- `split` (string|nil): "vertical", "horizontal", or nil (use current window)
+
+### `client:refresh_buffer()`
+Manually refreshes the terminal buffer with current pane output.
+
 ### `client:close()`
-Closes the persistent connection to tmux control mode. Sends `exit` command and stops the job.
+Closes the persistent connection to tmux control mode. Sends `exit` command, stops the job, and stops the refresh timer.
 
 ## Implementation Details
 
@@ -82,6 +121,8 @@ Closes the persistent connection to tmux control mode. Sends `exit` command and 
 - **Event handling**: Processes `%`-prefixed event notifications
 - **Error handling**: Detects `%error` prefix and surfaces errors
 - **Synchronization**: Uses `vim.wait()` for synchronous calls with timeout
+- **Terminal buffer**: Uses `capture-pane` to get pane output and displays it in a Neovim buffer
+- **Auto-refresh**: Uses `vim.fn.timer_start()` to periodically update the buffer with pane output
 
 ## Asynchronous Usage
 

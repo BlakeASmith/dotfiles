@@ -48,6 +48,10 @@ function M.new()
     self.pending_commands = {}
     self.response_callbacks = {}
     self.command_id = 0
+    self.term_bufnr = nil
+    self.refresh_timer = nil
+    self.last_output = ""
+    self.command_history = {}
     
     if is_nvim then
         -- Start persistent tmux -C process
@@ -252,6 +256,17 @@ function M:send_to_pane(command, callback)
         error("No pane found")
     end
     
+    -- Add command to history for display in terminal buffer
+    if self.term_bufnr and vim.api.nvim_buf_is_valid(self.term_bufnr) then
+        table.insert(self.command_history, command)
+        -- Keep only last 100 commands
+        if #self.command_history > 100 then
+            table.remove(self.command_history, 1)
+        end
+        -- Trigger refresh to show the command
+        self.last_output = ""
+    end
+    
     -- Use send-keys to send command
     local cmd = string.format("send-keys -t %s '%s' Enter", pane_id, command:gsub("'", "'\\''"))
     return self:send_command(cmd, callback)
@@ -295,14 +310,127 @@ function M:list_windows(callback)
     return nil
 end
 
+--- Attach a Neovim terminal buffer to display tmux pane output
+-- @param bufnr number|nil Buffer number (creates new if nil)
+-- @param refresh_interval number Refresh interval in milliseconds (default: 500)
+-- @return number Buffer number
+function M:attach_terminal_buffer(bufnr, refresh_interval)
+    refresh_interval = refresh_interval or 500
+    
+    -- Create or use existing buffer
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+        self.term_bufnr = bufnr
+    else
+        self.term_bufnr = vim.api.nvim_create_buf(true, true)
+        vim.api.nvim_buf_set_name(self.term_bufnr, "tmux-pane-output")
+    end
+    
+    -- Set buffer options
+    vim.api.nvim_buf_set_option(self.term_bufnr, "filetype", "tmux-output")
+    vim.api.nvim_buf_set_option(self.term_bufnr, "buftype", "nofile")
+    vim.api.nvim_buf_set_option(self.term_bufnr, "bufhidden", "hide")
+    
+    -- Initial output
+    self:refresh_buffer()
+    
+    -- Set up periodic refresh
+    if self.refresh_timer then
+        vim.fn.timer_stop(self.refresh_timer)
+    end
+    
+    self.refresh_timer = vim.fn.timer_start(refresh_interval, function()
+        if self.term_bufnr and vim.api.nvim_buf_is_valid(self.term_bufnr) then
+            self:refresh_buffer()
+        end
+    end, { ["repeat"] = -1 }) -- Repeat indefinitely
+    
+    return self.term_bufnr
+end
+
+--- Refresh the terminal buffer with current pane output
+function M:refresh_buffer()
+    if not self.term_bufnr or not vim.api.nvim_buf_is_valid(self.term_bufnr) then
+        return
+    end
+    
+    local output = self:get_pane_output()
+    if not output then
+        return
+    end
+    
+    -- Only update if output has changed
+    if output == self.last_output then
+        return
+    end
+    
+    self.last_output = output
+    
+    -- Split output into lines
+    local lines = {}
+    for line in output:gmatch("[^\r\n]+") do
+        table.insert(lines, line)
+    end
+    
+    -- Prepend command history to show commands that were sent
+    local all_lines = {}
+    for _, cmd in ipairs(self.command_history) do
+        table.insert(all_lines, "$ " .. cmd)
+    end
+    -- Add separator if there are commands
+    if #all_lines > 0 then
+        table.insert(all_lines, "")
+    end
+    -- Add pane output
+    for _, line in ipairs(lines) do
+        table.insert(all_lines, line)
+    end
+    
+    -- Update buffer
+    vim.api.nvim_buf_set_lines(self.term_bufnr, 0, -1, false, all_lines)
+    
+    -- Move cursor to end
+    local last_line = math.max(0, #all_lines - 1)
+    vim.api.nvim_buf_set_option(self.term_bufnr, "modified", false)
+end
+
+
+--- Open the terminal buffer in a window
+-- @param split string Split type: "vertical", "horizontal", or nil (use current window)
+function M:open_terminal_window(split)
+    if not self.term_bufnr or not vim.api.nvim_buf_is_valid(self.term_bufnr) then
+        error("Terminal buffer not attached. Call attach_terminal_buffer() first.")
+    end
+    
+    local cmd
+    if split == "vertical" then
+        cmd = "vsplit"
+    elseif split == "horizontal" then
+        cmd = "split"
+    else
+        cmd = "buffer"
+    end
+    
+    vim.cmd(cmd .. " " .. self.term_bufnr)
+end
+
 --- Close the tmux client
 function M:close()
+    -- Stop refresh timer
+    if self.refresh_timer then
+        vim.fn.timer_stop(self.refresh_timer)
+        self.refresh_timer = nil
+    end
+    
+    -- Close tmux control mode
     if self.job_id then
         -- Send exit command
         vim.fn.chansend(self.job_id, "exit\n")
         vim.fn.jobstop(self.job_id)
         self.job_id = nil
     end
+    
+    -- Note: We don't delete the buffer automatically
+    -- The user can close it manually if needed
 end
 
 return M
