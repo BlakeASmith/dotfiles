@@ -145,11 +145,79 @@ def config_lazygit(args: Namespace):
     print(f"created symlink from {source} to {target}")
 
 
+def config_ssh(args: Namespace):
+    """Configure SSH multiplexing in ~/.ssh/config."""
+    ssh_dir = HOME / ".ssh"
+    ssh_config = ssh_dir / "config"
+    sockets_dir = ssh_dir / "sockets"
+
+    # Create .ssh directory if it doesn't exist
+    ssh_dir.mkdir(mode=0o700, exist_ok=True)
+
+    # Create sockets directory if it doesn't exist
+    sockets_dir.mkdir(mode=0o700, exist_ok=True)
+    print(f"created sockets directory: {sockets_dir}")
+
+    # SSH multiplexing configuration lines
+    multiplex_config = "ControlMaster auto\nControlPath ~/.ssh/sockets/socket-%r@%h:%p\nControlPersist 120\n"
+
+    # Read existing config if it exists
+    existing_config = ""
+    if ssh_config.exists():
+        existing_config = ssh_config.read_text()
+
+    # Check if multiplexing config already exists
+    if "ControlMaster auto" in existing_config:
+        if args.replace:
+            # Remove existing multiplexing config block
+            lines = existing_config.split("\n")
+            new_lines = []
+            skip_block = False
+            for line in lines:
+                if line.strip() in ["ControlMaster auto", "ControlPath ~/.ssh/sockets/socket-%r@%h:%p", "ControlPersist 120"]:
+                    skip_block = True
+                    continue
+                if skip_block and line.strip() == "":
+                    skip_block = False
+                    continue
+                if not skip_block:
+                    new_lines.append(line)
+            existing_config = "\n".join(new_lines)
+            # Append new config
+            if existing_config and not existing_config.endswith("\n"):
+                existing_config += "\n"
+            existing_config += multiplex_config
+            ssh_config.write_text(existing_config)
+            print("replaced existing SSH multiplexing configuration")
+            print(multiplex_config)
+        else:
+            print("SSH multiplexing configuration already exists! Use --replace to overwrite it")
+            # Show existing config
+            lines = existing_config.split("\n")
+            in_block = False
+            for line in lines:
+                if "ControlMaster" in line or "ControlPath" in line or "ControlPersist" in line:
+                    in_block = True
+                    print(line)
+                elif in_block and line.strip() == "":
+                    break
+        return
+
+    # Append new config
+    if existing_config and not existing_config.endswith("\n"):
+        existing_config += "\n"
+    existing_config += multiplex_config
+    ssh_config.write_text(existing_config)
+    print("added SSH multiplexing configuration to ~/.ssh/config:")
+    print(multiplex_config)
+
+
 dispatch = {
     "zsh": config_zsh,
     "nvim": config_nvim,
     "lazygit": config_lazygit,
     "lg": config_lazygit,
+    "ssh": config_ssh,
 }
 
 if __name__ == "__main__":
@@ -175,6 +243,11 @@ if __name__ == "__main__":
     _ = nvim.add_argument("mode", default="selective", choices=["selective", "all"])
 
     lazygit = subparsers.add_parser("lazygit", aliases=["lg"])
+
+    ssh = subparsers.add_parser("ssh")
+    _ = ssh.add_argument(
+        "--replace", help="whether to replace existing SSH multiplexing config", action="store_true"
+    )
 
     args = parser.parse_args()
 
