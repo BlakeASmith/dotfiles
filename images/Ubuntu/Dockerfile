@@ -76,6 +76,21 @@ RUN python3 install.py zsh all --edit-rc --replace && \
 RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     bash /opt/dotfiles/brew/base-utils.sh || true
 
+# Install rust for root user
+WORKDIR /opt/dotfiles/rust
+RUN chmod +x install.sh crates.sh && \
+    chmod +x /opt/dotfiles/bin/install-fence && \
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    bash install.sh || true
+
+# Install bob for root user
+WORKDIR /opt/dotfiles/bob
+RUN chmod +x install.py && \
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    export PATH="$HOME/.cargo/bin:$PATH" && \
+    [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env" || true && \
+    python3 install.py || true
+
 # Set up zsh for the ubuntu user as well
 RUN chsh -s /usr/bin/zsh ubuntu
 RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/ubuntu/.bashrc
@@ -89,6 +104,21 @@ RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
         python3 /opt/dotfiles/install.py zsh all --edit-rc --replace && \
         python3 /opt/dotfiles/install.py nvim all; \
     fi
+
+# Install rust for ubuntu user
+WORKDIR /opt/dotfiles/rust
+RUN chmod +x install.sh crates.sh && \
+    chmod +x /opt/dotfiles/bin/install-fence && \
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    bash install.sh || true
+
+# Install bob for ubuntu user
+WORKDIR /opt/dotfiles/bob
+RUN chmod +x install.py && \
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    export PATH="$HOME/.cargo/bin:$PATH" && \
+    [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env" || true && \
+    python3 install.py || true
 
 # Switch back to root for default
 USER root
