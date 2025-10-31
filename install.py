@@ -1,3 +1,4 @@
+import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -133,7 +134,23 @@ def config_nvim(args: Namespace):
         print(f"created symlink from {plugin_impl_path} to {plugin_install_path}")
 
 
-dispatch = {"zsh": config_zsh, "nvim": config_nvim}
+def config_lazygit(args: Namespace):
+    # lazygit config direcotry will be in a differnet place depending on how it was installed
+    # there is a -ucf option which allows changing it, but we can also just get the current one
+    output = subprocess.check_output(["lazygit", "--print-config-dir"])
+    target = Path(output.decode().strip()) / "config.yml"
+    source = HERE / "lazygit/config.yml"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.symlink_to(source)
+    print(f"created symlink from {source} to {target}")
+
+
+dispatch = {
+    "zsh": config_zsh,
+    "nvim": config_nvim,
+    "lazygit": config_lazygit,
+    "lg": config_lazygit,
+}
 
 if __name__ == "__main__":
     parser = ArgumentParser("dotfiles-installer")
@@ -156,6 +173,8 @@ if __name__ == "__main__":
         "--symlink-dir", default=None, action="store_true", help="don't use this"
     )
     _ = nvim.add_argument("mode", default="selective", choices=["selective", "all"])
+
+    lazygit = subparsers.add_parser("lazygit", aliases=["lg"])
 
     args = parser.parse_args()
 
