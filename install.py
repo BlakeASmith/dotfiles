@@ -83,7 +83,11 @@ def config_zsh(args: Namespace):
         print(block.text)
 
     configs = {
-        "keybindings": {"fence": KEYBINDINGS_FENCE, "source": HERE / "zsh/keybinds.sh"}
+        "keybindings": {"fence": KEYBINDINGS_FENCE, "source": HERE / "zsh/keybinds.sh"},
+        "aliases": {
+            "fence": CodeFence(start="### ALIAS ###", end="### ALIAS ###"),
+            "source": HERE / "zsh/aliases.sh",
+        },
     }
 
     if args.config == "all":
@@ -136,7 +140,9 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="_program")
 
     zsh = subparsers.add_parser("zsh")
-    _ = zsh.add_argument("config", default="all", choices=["all", "keybindings"])
+    _ = zsh.add_argument(
+        "config", default="all", choices=["all", "keybindings", "aliases"]
+    )
     _ = zsh.add_argument(
         "--edit-rc", help="whether to modify the zshrc file", action="store_true"
     )
