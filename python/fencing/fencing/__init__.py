@@ -1,8 +1,7 @@
-from pathlib import Path
 import re
-
-from functools import cached_property, lru_cache
 from dataclasses import dataclass
+from functools import cached_property, lru_cache
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -17,7 +16,7 @@ class FencedBlock:
         """
         Write the block to the bottom of the file at path
         """
-        with path.open('a') as f:
+        with path.open("a") as f:
             _ = f.write("\n" + self.text)
 
     def replace(self, content: str, source: Path | str):
@@ -26,8 +25,8 @@ class FencedBlock:
         else:
             file_content = source
 
-        prefix = file_content[0:self.content_location[0]]
-        postfix = file_content[self.content_location[1]:]
+        prefix = file_content[0 : self.content_location[0]]
+        postfix = file_content[self.content_location[1] :]
 
         new_file_content = prefix + content + postfix
 
@@ -69,11 +68,10 @@ class CodeFence:
         if self.is_symettric:
             # if start and end are the same, the starts the first match, then every second match
             return matches[::2]
-        
+
         # otherwise, the starts are all the matches
         return matches
 
-            
     def _find_ends(self, content: str):
         matches = self._find_matches(self.end_pattern, content)
         if self.is_symettric:
@@ -82,7 +80,7 @@ class CodeFence:
         return self.start_pattern.finditer(content)
 
     def find_blocks(self, content: str, source_path: Path | None = None):
-        starts= self._find_starts(content)
+        starts = self._find_starts(content)
         ends = self._find_ends(content)
         # TODO: handle missing end blocks
         # atleast the last end could be omitted
@@ -90,18 +88,11 @@ class CodeFence:
 
         return [
             FencedBlock(
-                content_location=(
-                    smatch.end(0),
-                    ematch.start(0)
-                ),
-                block_location=(
-                    smatch.start(0),
-                    ematch.end(0)
-                ),
-                text=content[smatch.start(0):ematch.end(0)],
-                content=content[smatch.end(0):ematch.start(0)],
-                source_path=source_path
+                content_location=(smatch.end(0), ematch.start(0)),
+                block_location=(smatch.start(0), ematch.end(0)),
+                text=content[smatch.start(0) : ematch.end(0)],
+                content=content[smatch.end(0) : ematch.start(0)],
+                source_path=source_path,
             )
             for smatch, ematch in startends
         ]
-

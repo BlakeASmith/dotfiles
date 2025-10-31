@@ -20,6 +20,11 @@ SSH_MULTIPLEXING_FENCE = CodeFence(
     end="### SSH MULTIPLEXING ###",
 )
 
+COMPLETIONS_FENCE = CodeFence(
+    start="### COMPLETIONS ###",
+    end="### COMPLETIONS ###",
+)
+
 
 def symlink_rec(source: Path, destination: Path, quiet: bool = False):
     """Recursively symlink all leaf files from source to destination.
@@ -117,6 +122,7 @@ def config_zsh(args: Namespace):
             "fence": CodeFence(start="### ALIAS ###", end="### ALIAS ###"),
             "source": HERE / "zsh/aliases.sh",
         },
+        "completions": {"fence": COMPLETIONS_FENCE, "source": HERE / "zsh/completions.sh"},
     }
 
     if args.config == "all":
@@ -225,7 +231,7 @@ if __name__ == "__main__":
 
     zsh = subparsers.add_parser("zsh")
     _ = zsh.add_argument(
-        "config", default="all", choices=["all", "keybindings", "aliases"]
+        "config", default="all", choices=["all", "keybindings", "aliases", "completions"]
     )
     _ = zsh.add_argument(
         "--edit-rc", help="whether to modify the zshrc file", action="store_true"

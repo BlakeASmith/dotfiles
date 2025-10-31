@@ -1,6 +1,8 @@
 {
   "extraPaths": [
-    "python/fencing",
-  ]
+    "python/fencing"
+  ],
+  "reportAny": false,
+  "reportUnusedCallResult": false
 }
 

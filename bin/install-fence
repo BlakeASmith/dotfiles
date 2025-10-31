@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+
+import argparse
+from dataclasses import dataclass
+from glob import glob
+from pathlib import Path
+
+## Personal Modules Install ##
+PYTHON_ROOT = Path(__file__).parent.parent
+import sys
+
+sys.path.extend(
+    [
+        str(Path(p).parent)
+        for p in set(
+            glob("**/pyproject.toml*", root_dir=PYTHON_ROOT, recursive=True)
+            + glob("**/setup.py*", root_dir=PYTHON_ROOT, recursive=True)
+        )
+    ]
+)
+## Personal Modules Install ##
+
+import fencing
+
+
+@dataclass
+class InstallFenceArgs:
+    fence: fencing.CodeFence
+    source: Path
+    target: Path
+    replace: bool
+
+
+def parse_args() -> InstallFenceArgs:
+    parser = argparse.ArgumentParser(description="Install code fencing in a file")
+    _ = parser.add_argument(
+        "--start", required=True, help="Start delimiter for code fencing"
+    )
+    _ = parser.add_argument(
+        "--end", required=True, help="End delimiter for code fencing"
+    )
+    _ = parser.add_argument("source", help="path with fenced blocks to install")
+    _ = parser.add_argument(
+        "target",
+        help="Path to write blocks to",
+    )
+
+    args = parser.parse_args()
+
+    return InstallFenceArgs(
+        fence=fencing.CodeFence(args.start, args.end),
+        source=Path(args.source),
+        target=Path(args.target),
+        replace=True,
+    )
+
+
+def install_block(
+    fence: fencing.CodeFence,
+    source: str,
+    target_path: Path,
+    existing_content: str,
+    replace: bool = False,
+    config_name: str = "config",
+):
+    """Install a fenced block into a configuration file.
+
+    Args:
+        fence: CodeFence to identify the block
+        source: Path to source file containing the block
+        target_path: Path to target configuration file
+        existing_content: Current content of the target file
+        replace: Whether to replace existing block
+        config_name: Name of config file for error messages
+    """
+    block = fence.find_blocks(source)[0]
+    existing_blocks = fence.find_blocks(existing_content)
+    # expect zero or one existing_blocks
+    if len(existing_blocks) > 1:
+        raise ValueError(
+            f"Your {config_name} has two or more existing blocks matching the {fence}, I don't know what to do here"
+        )
+
+    if existing_blocks:
+        if replace:
+            _ = existing_blocks[0].replace(block.content, target_path)
+            return
+        return
+
+    block.append_to(target_path)
+
+
+def main():
+    args = parse_args()
+
+    incoming = args.fence.find_blocks(args.source.read_text())
+    existing = args.fence.find_blocks(args.target.read_text())
+
+    if existing:
+        if args.replace:
+            existing[0].replace(incoming[0].content, args.target)
+    else:
+        incoming[0].append_to(args.target)
+
+
+if __name__ == "__main__":
+    main()
