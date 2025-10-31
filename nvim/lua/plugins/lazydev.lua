@@ -11,9 +11,10 @@ return {
 			-- Integrations are enabled by default:
 			-- integrations = {
 			--   lspconfig = true,  -- Fixes lspconfig's workspace management for LuaLS
-			--   cmp = true,        -- Adds cmp source for completion
+			--   cmp = true,        -- Adds cmp source for completion (nvim-cmp)
 			--   coq = false,       -- Coq integration (disabled by default)
 			-- },
+			-- Note: blink.cmp integration is configured in autocomplete.lua
 		},
 	},
 }

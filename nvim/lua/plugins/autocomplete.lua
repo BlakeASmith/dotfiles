@@ -74,12 +74,18 @@ return {
 				documentation = { auto_show = false, auto_show_delay_ms = 500 },
 			},
 
-			sources = {
-				default = { "lsp", "path", "snippets", "lazydev", "buffer" },
-				providers = {
-					lazydev = { module = "lazydev.integrations.blink", score_offset = 100 },
+		sources = {
+			-- add lazydev to your completion providers (first for priority)
+			default = { "lazydev", "lsp", "path", "snippets", "buffer" },
+			providers = {
+				lazydev = {
+					name = "LazyDev",
+					module = "lazydev.integrations.blink",
+					-- make lazydev completions top priority (see `:h blink.cmp`)
+					score_offset = 100,
 				},
 			},
+		},
 
 			snippets = { preset = "luasnip" },
 
