@@ -1,6 +1,5 @@
---- Minimal tmux control mode client
+--- Minimal tmux control mode client with persistent connection
 -- Assumes there is only ever one pane
--- Uses stateless approach: each command spawns its own tmux process
 -- @module tmux_client
 
 local M = {}
@@ -9,15 +8,15 @@ local mt = { __index = M }
 -- Check if running in Neovim
 local is_nvim = pcall(function() return vim.fn.has end)
 
---- Parse response from tmux output
--- @param output string Raw output from tmux
+--- Parse response lines
+-- @param lines table Array of lines from tmux
 -- @return table Response with 'response' and 'events' fields
-local function parse_response(output)
+local function parse_response(lines)
     local response_lines = {}
     local events = {}
     local in_response = false
     
-    for line in output:gmatch("[^\r\n]+") do
+    for _, line in ipairs(lines) do
         if line:match("^%%begin") then
             in_response = true
         elseif line:match("^%%end") then
@@ -44,32 +43,192 @@ end
 -- @return tmux client instance
 function M.new()
     local self = setmetatable({}, mt)
+    self.job_id = nil
+    self.stdout_buffer = {}
+    self.pending_commands = {}
+    self.response_callbacks = {}
+    self.command_id = 0
+    
+    if is_nvim then
+        -- Start persistent tmux -C process
+        local job_id = vim.fn.jobstart({ "tmux", "-C" }, {
+            stdout_buffered = false,
+            on_stdout = function(_, data, _)
+                self:_handle_stdout(data)
+            end,
+            on_stderr = function(_, data, _)
+                self:_handle_stderr(data)
+            end,
+            on_exit = function(_, code, _)
+                self:_handle_exit(code)
+            end,
+        })
+        
+        if job_id <= 0 then
+            error("Failed to start tmux control mode: " .. tostring(job_id))
+        end
+        
+        self.job_id = job_id
+    else
+        error("Persistent connection requires Neovim")
+    end
+    
     return self
+end
+
+--- Handle stdout from tmux
+-- @param data table Array of lines from stdout
+function M:_handle_stdout(data)
+    for _, line in ipairs(data) do
+        if line ~= "" then
+            table.insert(self.stdout_buffer, line)
+            
+            -- Check if we've received a complete response (%end)
+            if line:match("^%%end") then
+                self:_process_response()
+            end
+        end
+    end
+end
+
+--- Handle stderr from tmux
+-- @param data table Array of lines from stderr
+function M:_handle_stderr(data)
+    -- Handle errors if needed
+    for _, line in ipairs(data) do
+        if line ~= "" then
+            vim.notify("tmux stderr: " .. line, vim.log.levels.WARN)
+        end
+    end
+end
+
+--- Handle process exit
+-- @param code number Exit code
+function M:_handle_exit(code)
+    self.job_id = nil
+    if code ~= 0 then
+        vim.notify("tmux control mode exited with code: " .. tostring(code), vim.log.levels.ERROR)
+    end
+end
+
+--- Process a complete response from the buffer
+function M:_process_response()
+    if #self.pending_commands == 0 then
+        -- Clear events that don't belong to any command
+        local i = 1
+        while i <= #self.stdout_buffer do
+            if self.stdout_buffer[i]:match("^%%begin") then
+                -- Found start of response without pending command, skip it
+                while i <= #self.stdout_buffer do
+                    if self.stdout_buffer[i]:match("^%%end") then
+                        break
+                    end
+                    i = i + 1
+                end
+                -- Remove processed lines
+                for j = i, 1, -1 do
+                    if self.stdout_buffer[j]:match("^%%begin") or self.stdout_buffer[j]:match("^%%end") then
+                        table.remove(self.stdout_buffer, j)
+                    end
+                end
+                break
+            end
+            i = i + 1
+        end
+        return
+    end
+    
+    -- Find the most recent %begin marker
+    local begin_idx = nil
+    for i = #self.stdout_buffer, 1, -1 do
+        if self.stdout_buffer[i]:match("^%%begin") then
+            begin_idx = i
+            break
+        end
+    end
+    
+    if not begin_idx then
+        return
+    end
+    
+    -- Collect lines from %begin to %end
+    local lines = {}
+    local end_idx = nil
+    for i = begin_idx, #self.stdout_buffer do
+        table.insert(lines, self.stdout_buffer[i])
+        if self.stdout_buffer[i]:match("^%%end") then
+            end_idx = i
+            break
+        end
+    end
+    
+    if not end_idx then
+        return
+    end
+    
+    -- Remove processed lines from buffer
+    for i = end_idx, begin_idx, -1 do
+        table.remove(self.stdout_buffer, i)
+    end
+    
+    -- Parse and call callback
+    local cmd_info = table.remove(self.pending_commands, 1)
+    if cmd_info and cmd_info.callback then
+        local result = parse_response(lines)
+        cmd_info.callback(result)
+    end
 end
 
 --- Send a command to tmux
 -- @param command string The command to send
--- @return table Response with 'response' and 'events' fields
-function M:send_command(command)
-    local cmd
-    local output
-    
-    if is_nvim then
-        -- Neovim: use vim.fn.system
-        cmd = string.format("echo '%s' | tmux -C", command:gsub("'", "'\\''"))
-        output = vim.fn.system(cmd)
-    else
-        -- Pure Lua: use io.popen
-        cmd = string.format("echo '%s' | tmux -C", command:gsub("'", "'\\''"))
-        local handle = io.popen(cmd, "r")
-        if not handle then
-            error("Failed to execute tmux command")
-        end
-        output = handle:read("*a")
-        handle:close()
+-- @param callback function Optional callback function(response)
+-- @return table|nil Response if callback not provided (synchronous)
+function M:send_command(command, callback)
+    if not self.job_id then
+        error("tmux client not connected")
     end
     
-    return parse_response(output)
+    if callback then
+        -- Asynchronous with callback
+        table.insert(self.pending_commands, {
+            command = command,
+            callback = callback
+        })
+        
+        -- Send command
+        vim.fn.chansend(self.job_id, command .. "\n")
+        return nil
+    else
+        -- Synchronous: wait for response
+        local response_received = false
+        local result = nil
+        
+        local function sync_callback(resp)
+            result = resp
+            response_received = true
+        end
+        
+        table.insert(self.pending_commands, {
+            command = command,
+            callback = sync_callback
+        })
+        
+        -- Send command
+        vim.fn.chansend(self.job_id, command .. "\n")
+        
+        -- Wait for response (with timeout)
+        local timeout_ms = 5000 -- 5 seconds
+        local elapsed = 0
+        while not response_received do
+            if elapsed >= timeout_ms then
+                error("tmux command timeout: " .. command)
+            end
+            vim.wait(10) -- Wait 10ms
+            elapsed = elapsed + 10
+        end
+        
+        return result
+    end
 end
 
 --- Get the current pane ID
@@ -77,7 +236,7 @@ end
 -- @return string|nil Pane ID
 function M:get_pane_id()
     local result = self:send_command("list-panes -F '#{pane_id}'")
-    if #result.response > 0 then
+    if result and #result.response > 0 then
         return result.response[1]
     end
     return nil
@@ -85,15 +244,17 @@ end
 
 --- Send a command to the pane
 -- @param command string Command to execute
--- @return table Response
-function M:send_to_pane(command)
+-- @param callback function Optional callback
+-- @return table|nil Response if callback not provided
+function M:send_to_pane(command, callback)
     local pane_id = self:get_pane_id()
     if not pane_id then
         error("No pane found")
     end
     
     -- Use send-keys to send command
-    return self:send_command(string.format("send-keys -t %s '%s' Enter", pane_id, command:gsub("'", "'\\''")))
+    local cmd = string.format("send-keys -t %s '%s' Enter", pane_id, command:gsub("'", "'\\''"))
+    return self:send_command(cmd, callback)
 end
 
 --- Get pane output
@@ -106,29 +267,42 @@ function M:get_pane_output()
     
     -- Capture pane contents
     local result = self:send_command(string.format("capture-pane -t %s -p", pane_id))
-    if #result.response > 0 then
+    if result and #result.response > 0 then
         return table.concat(result.response, "\n")
     end
     return nil
 end
 
 --- List sessions
--- @return table List of session names
-function M:list_sessions()
-    local result = self:send_command("list-sessions -F '#{session_name}'")
-    return result.response
+-- @param callback function Optional callback
+-- @return table|nil List of session names if callback not provided
+function M:list_sessions(callback)
+    local result = self:send_command("list-sessions -F '#{session_name}'", callback)
+    if result then
+        return result.response
+    end
+    return nil
 end
 
 --- List windows
--- @return table List of window information
-function M:list_windows()
-    local result = self:send_command("list-windows -F '#{window_index}: #{window_name}'")
-    return result.response
+-- @param callback function Optional callback
+-- @return table|nil List of window information if callback not provided
+function M:list_windows(callback)
+    local result = self:send_command("list-windows -F '#{window_index}: #{window_name}'", callback)
+    if result then
+        return result.response
+    end
+    return nil
 end
 
---- Close the tmux client (no-op for stateless client)
+--- Close the tmux client
 function M:close()
-    -- No persistent connection to close
+    if self.job_id then
+        -- Send exit command
+        vim.fn.chansend(self.job_id, "exit\n")
+        vim.fn.jobstop(self.job_id)
+        self.job_id = nil
+    end
 end
 
 return M

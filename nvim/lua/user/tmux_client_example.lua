@@ -45,4 +45,5 @@ end
 local result = client:send_command("show-options -g prefix")
 print("\nTmux prefix key: " .. (result.response[1] or "(unknown)"))
 
--- No need to close (stateless client)
+-- Close the client when done
+client:close()

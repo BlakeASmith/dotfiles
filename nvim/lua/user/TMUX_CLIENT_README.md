@@ -1,13 +1,13 @@
 # tmux Control Mode Client (Lua)
 
-A minimal Lua client for tmux control mode (`-C` flag). Assumes there is only ever one pane.
+A minimal Lua client for tmux control mode (`-C` flag) with persistent connection. Assumes there is only ever one pane.
 
 ## Features
 
-- Stateless design: each command spawns its own tmux process
-- Works in Neovim (uses `vim.fn.system`) or standalone Lua (uses `io.popen`)
-- Parses tmux control mode protocol responses
-- Handles events and errors
+- **Persistent connection**: Maintains a single tmux -C process for efficient communication
+- **Synchronous and asynchronous APIs**: Block for responses or use callbacks
+- **Event handling**: Processes tmux events asynchronously
+- **Neovim integration**: Uses Neovim's job API for bidirectional communication
 
 ## Usage
 
@@ -45,10 +45,16 @@ print(result.response[1])  -- e.g., "prefix C-b"
 ### `tmux.new()`
 Creates a new tmux client instance.
 
-### `client:send_command(command)`
-Sends a command to tmux and returns a table with:
-- `response`: array of response lines
-- `events`: array of event notifications
+### `client:send_command(command, callback)`
+Sends a command to tmux.
+
+**Parameters:**
+- `command` (string): The tmux command to send
+- `callback` (function, optional): If provided, called asynchronously with response table. If not provided, blocks and returns response.
+
+**Returns:**
+- If callback provided: `nil`
+- If no callback: table with `response` (array of lines) and `events` (array of event notifications)
 
 ### `client:get_pane_id()`
 Returns the pane ID (assumes only one pane exists).
@@ -66,14 +72,34 @@ Returns an array of session names.
 Returns an array of window information strings.
 
 ### `client:close()`
-No-op for stateless client (no persistent connection to close).
+Closes the persistent connection to tmux control mode. Sends `exit` command and stops the job.
 
 ## Implementation Details
 
-- Uses stateless approach: each command spawns `echo 'command' | tmux -C`
-- Parses `%begin`/`%end` markers to extract responses
-- Collects `%`-prefixed lines as events
-- Handles errors indicated by `%error` prefix
+- **Persistent connection**: Starts `tmux -C` once via `vim.fn.jobstart`
+- **Bidirectional communication**: Sends commands via `chansend`, receives via `on_stdout` callback
+- **Response parsing**: Handles `%begin`/`%end` markers to extract responses
+- **Event handling**: Processes `%`-prefixed event notifications
+- **Error handling**: Detects `%error` prefix and surfaces errors
+- **Synchronization**: Uses `vim.wait()` for synchronous calls with timeout
+
+## Asynchronous Usage
+
+```lua
+local client = tmux.new()
+
+-- Asynchronous with callback
+client:send_command("list-sessions", function(result)
+    print("Sessions:")
+    for _, session in ipairs(result.response) do
+        print("  " .. session)
+    end
+end)
+
+-- Synchronous (blocks until response)
+local result = client:send_command("show-options -g prefix")
+print("Prefix: " .. result.response[1])
+```
 
 ## Example
 
