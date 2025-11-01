@@ -1,7 +1,8 @@
-from fileinput import hook_compressed
+import glob
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
+from fileinput import hook_compressed
 from pathlib import Path
 
 fencing_path = Path(__file__).parent / "python/fencing"
@@ -124,7 +125,10 @@ def config_zsh(args: Namespace):
             "fence": CodeFence(start="### ALIAS ###", end="### ALIAS ###"),
             "source": HERE / "zsh/aliases.sh",
         },
-        "completions": {"fence": COMPLETIONS_FENCE, "source": HERE / "zsh/completions.sh"},
+        "completions": {
+            "fence": COMPLETIONS_FENCE,
+            "source": HERE / "zsh/completions.sh",
+        },
     }
 
     if args.config == "all":
@@ -219,21 +223,37 @@ def config_ssh(args: Namespace):
     )
 
 
+def config_bin(args):
+    target_bin = Path("~/.local/bin").expanduser()
+    source_bin = HERE / "bin"
+
+    if args.config[0] == "all":
+        scripts = source_bin.glob("*")
+    else:
+        scripts = [source_bin / script for script in args.config]
+
+    for source in scripts:
+        (target_bin / source.name).symlink_to(source)
+
+
 dispatch = {
     "zsh": config_zsh,
     "nvim": config_nvim,
     "lazygit": config_lazygit,
     "lg": config_lazygit,
     "ssh": config_ssh,
+    "bin": config_bin,
 }
 
 if __name__ == "__main__":
     parser = ArgumentParser("dotfiles-installer")
     subparsers = parser.add_subparsers(dest="_program")
 
-    zsh = subparsers.add_parser("zsh")
+    zsh = subparsers.add_parser("zsh", help="install zsh config snippets")
     _ = zsh.add_argument(
-        "config", default="all", choices=["all", "keybindings", "aliases", "completions"]
+        "config",
+        default="all",
+        choices=["all", "keybindings", "aliases", "completions"],
     )
     _ = zsh.add_argument(
         "--edit-rc", help="whether to modify the zshrc file", action="store_true"
@@ -242,23 +262,37 @@ if __name__ == "__main__":
         "--replace", help="whether to modify the zshrc file", action="store_true"
     )
 
-    nvim = subparsers.add_parser("nvim")
+    nvim = subparsers.add_parser("nvim", help="install neovim config, or parts of it")
     _ = nvim.add_argument("--plugin", choices=["tfling"], default=None)
     _ = nvim.add_argument(
         "--symlink-dir", default=None, action="store_true", help="don't use this"
     )
     _ = nvim.add_argument("mode", default="selective", choices=["selective", "all"])
 
-    lazygit = subparsers.add_parser("lazygit", aliases=["lg"])
-
-    ssh = subparsers.add_parser("ssh")
-    _ = ssh.add_argument(
-        "--edit-config", help="whether to modify the SSH config file", action="store_true"
-    )
-    _ = ssh.add_argument(
-        "--replace", help="whether to replace existing SSH multiplexing config", action="store_true"
+    lazygit = subparsers.add_parser(
+        "lazygit", aliases=["lg"], help="link the lazygit config file"
     )
 
+    ssh = subparsers.add_parser("ssh", help="add ssh configuration snippets")
+    _ = ssh.add_argument(
+        "--edit-config",
+        help="whether to modify the SSH config file",
+        action="store_true",
+    )
+    _ = ssh.add_argument(
+        "--replace",
+        help="whether to replace existing SSH multiplexing config",
+        action="store_true",
+    )
+
+    bin = subparsers.add_parser(
+        "bin", help="pick scripts from the bin to install. use 'all' to grab everything"
+    )
+    bin.add_argument(
+        "config",
+        nargs="+",
+        choices=["all"] + list(p.name for p in (HERE / "bin").glob("*")),
+    )
     args = parser.parse_args()
 
     if args._program not in dispatch:
@@ -266,4 +300,3 @@ if __name__ == "__main__":
         exit(1)
 
     dispatch[args._program](args)
-

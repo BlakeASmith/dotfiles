@@ -1,0 +1,2 @@
+#!/bin/bash
+fd "^\.git$" --type d --hidden --exclude ".local/share" --exclude ".cargo" --exclude "Documents" --exclude "Library" ~ | sed 's/.git\///' | fzf
