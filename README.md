@@ -36,6 +36,9 @@ present in the `.zshrc` file. Without that flag, the script will not modify the 
 To enable this, I wrote a small library `fencing` which handles adding, removing, or updating **sections** of a file delimited by start/end patterns. Each different section of configuration which I want to be independantly install-able is surrounded in some
 kind of block delimiter, usually a comment like `### SECTION ###`. 
 
+## Gotchas
+
+- Currently relies on being cloned to `~/dotfiles/` exactly :(
 
 ## Configs
 
