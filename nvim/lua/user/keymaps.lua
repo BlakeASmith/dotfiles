@@ -1,5 +1,4 @@
 -- General navigation and visual mode keymaps
-
 -- Scroll with cursor centered
 vim.keymap.set("n", "<C-d>", "<C-d>zz", { desc = "Scroll downwards" })
 vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Scroll upwards" })

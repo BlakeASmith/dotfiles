@@ -1,3 +1,4 @@
+from fileinput import hook_compressed
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
@@ -9,6 +10,7 @@ from fencing import CodeFence, FencedBlock
 
 HERE = Path(__file__).parent
 HOME = Path.home()
+
 
 KEYBINDINGS_FENCE = CodeFence(
     start="### KEYBINDINGS ###",
@@ -264,3 +266,4 @@ if __name__ == "__main__":
         exit(1)
 
     dispatch[args._program](args)
+
