@@ -28,6 +28,11 @@ COMPLETIONS_FENCE = CodeFence(
     end="### COMPLETIONS ###",
 )
 
+BIN_WRAPPERS_FENCE = CodeFence(
+    start="### BIN WRAPPERS ###",
+    end="### BIN WRAPPERS ###",
+)
+
 
 def symlink_rec(source: Path, destination: Path, quiet: bool = False):
     """Recursively symlink all leaf files from source to destination.
@@ -112,24 +117,36 @@ def install_block(
     print(block.text)
 
 
+configs = {
+    "keybindings": {
+        "fence": KEYBINDINGS_FENCE,
+        "source": HERE / "zsh/keybinds.sh",
+        "help": "zsh shell keybinds (for command line)",
+    },
+    "aliases": {
+        "fence": CodeFence(start="### ALIAS ###", end="### ALIAS ###"),
+        "source": HERE / "zsh/aliases.sh",
+        "help": "shell aliases",
+    },
+    "completions": {
+        "fence": COMPLETIONS_FENCE,
+        "source": HERE / "zsh/completions.sh",
+        "help": "zsh completion configuration",
+    },
+    "wrappers": {
+        "fence": BIN_WRAPPERS_FENCE,
+        "source": HERE / "zsh/bin_wrappers.sh",
+        "help": "wrappers for scripts; use `python3 install.py bin all` first",
+    },
+}
+
+
 def config_zsh(args: Namespace):
     rc_path = HOME / ".zshrc"
     # Read existing config if it exists
     rc_sh = ""
     if rc_path.exists():
         rc_sh = rc_path.read_text()
-
-    configs = {
-        "keybindings": {"fence": KEYBINDINGS_FENCE, "source": HERE / "zsh/keybinds.sh"},
-        "aliases": {
-            "fence": CodeFence(start="### ALIAS ###", end="### ALIAS ###"),
-            "source": HERE / "zsh/aliases.sh",
-        },
-        "completions": {
-            "fence": COMPLETIONS_FENCE,
-            "source": HERE / "zsh/completions.sh",
-        },
-    }
 
     if args.config == "all":
         for conf in configs.values():
@@ -247,20 +264,25 @@ dispatch = {
 
 if __name__ == "__main__":
     parser = ArgumentParser("dotfiles-installer")
-    subparsers = parser.add_subparsers(dest="_program")
+    subparsers = parser.add_subparsers(dest="_program", title="programs 📺")
 
     zsh = subparsers.add_parser("zsh", help="install zsh config snippets")
-    _ = zsh.add_argument(
-        "config",
-        default="all",
-        choices=["all", "keybindings", "aliases", "completions"],
-    )
     _ = zsh.add_argument(
         "--edit-rc", help="whether to modify the zshrc file", action="store_true"
     )
     _ = zsh.add_argument(
         "--replace", help="whether to modify the zshrc file", action="store_true"
     )
+
+    zsh_configs = zsh.add_subparsers(
+        dest="config",
+        title="Select what to install, use 'all' for everything 🚀",
+        required=True,
+    )
+    for k, v in configs.items():
+        _help: str = v.get("help") or ""  # pyright: ignore[reportAssignmentType]
+        zsh_configs.add_parser(k, help=_help)
+    zsh_configs.add_parser("all", help="The Kitchen Sink")
 
     nvim = subparsers.add_parser("nvim", help="install neovim config, or parts of it")
     _ = nvim.add_argument("--plugin", choices=["tfling"], default=None)
