@@ -4,3 +4,5 @@ set -e
 brew install tree
 brew install lazygit
 brew install fzf fd
+brew install jq
+brew install jqp
