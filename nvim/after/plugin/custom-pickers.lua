@@ -1,9 +1,10 @@
 local pickers = require("telescope.pickers")
 local finders = require("telescope.finders")
 local conf = require("telescope.config").values
-local themes = require("telescope.themes")
 
-local config_paths = vim.split(vim.fn.glob("~/.config/nvim/**/*"), "\n")
+local nvim_paths = vim.fn.glob("~/.config/nvim/**/*")
+local dotfiles_paths = vim.fn.glob("~/dotfiles/**/*")
+local config_paths = vim.split(nvim_paths .. "\n" .. dotfiles_paths, "\n")
 
 local config_picker = function(opts)
 	opts = opts or {}
