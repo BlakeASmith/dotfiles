@@ -1,5 +1,12 @@
+import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+
+HERE_PARENT = Path(__file__).parent.parent
+fencing_path = HERE_PARENT / "python/fencing"
+installman_path = HERE_PARENT / "python/installman"
+sys.path.append(str(fencing_path))
+sys.path.append(str(installman_path))
 
 from fencing import CodeFence
 from installman import installer
