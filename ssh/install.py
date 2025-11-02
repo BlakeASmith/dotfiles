@@ -25,7 +25,7 @@ def print_install_result(result) -> None:
         print(result.existing_block_text)
     elif result.type == InstallResultType.PREVIEW:
         print(f"# add to your {result.target_path}")
-        print(f"run with {result.edit_flag_name} to do this automatically")
+        print("run with --edit-config to do this automatically")
         print(result.block_text)
         if result.existing_block_text:
             print(f"\n# This would replace the existing block:")
@@ -62,7 +62,6 @@ def install_ssh(args: Namespace):
         edit=args.edit_config,
         replace=args.replace,
         config_name="SSH config",
-        edit_flag_name="--edit-config",
     )
     print_install_result(result)
 

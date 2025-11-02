@@ -23,7 +23,6 @@ class InstallResult:
     existing_block_text: str | None = None
     config_name: str = "config"
     target_path: Path | None = None
-    edit_flag_name: str = "--edit"
 
 
 @dataclass(frozen=True)
@@ -128,7 +127,6 @@ def install_block(
     replace: bool = False,
     edit: bool = True,
     config_name: str = "config",
-    edit_flag_name: str = "--edit",
 ) -> InstallResult:
     """Install a fenced block into a configuration file.
 
@@ -140,7 +138,6 @@ def install_block(
         replace: Whether to replace existing block
         edit: Whether to actually edit the file (False = preview only)
         config_name: Name of config file for error messages
-        edit_flag_name: Name of edit flag for prompt messages
         
     Returns:
         InstallResult indicating the outcome of the installation
@@ -168,7 +165,6 @@ def install_block(
                     existing_block_text=existing_blocks[0].text,
                     config_name=config_name,
                     target_path=target_path,
-                    edit_flag_name=edit_flag_name,
                 )
             else:
                 # Preview mode with replace - show what would be replaced
@@ -179,7 +175,6 @@ def install_block(
                     existing_block_text=existing_blocks[0].text,
                     config_name=config_name,
                     target_path=target_path,
-                    edit_flag_name=edit_flag_name,
                 )
         return InstallResult(
             type=InstallResultType.ALREADY_EXISTS,
@@ -188,7 +183,6 @@ def install_block(
             existing_block_text=existing_blocks[0].text,
             config_name=config_name,
             target_path=target_path,
-            edit_flag_name=edit_flag_name,
         )
 
     if not edit:
@@ -198,7 +192,6 @@ def install_block(
             block_content=block.content,
             config_name=config_name,
             target_path=target_path,
-            edit_flag_name=edit_flag_name,
         )
 
     block.append_to(target_path)
@@ -208,5 +201,4 @@ def install_block(
         block_content=block.content,
         config_name=config_name,
         target_path=target_path,
-        edit_flag_name=edit_flag_name,
     )
