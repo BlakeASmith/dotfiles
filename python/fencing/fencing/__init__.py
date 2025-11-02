@@ -11,10 +11,11 @@ class Change:
     and apply() persists it to disk.
     """
 
-    def __init__(self, target_path: Path, old_content: str, new_content: str):
+    def __init__(self, target_path: Path, old_content: str, new_content: str, block_text: str | None = None):
         self.target_path = target_path
         self.old_content = old_content
         self.new_content = new_content
+        self.block_text = block_text  # The block that was added/replaced, for pretty printing
 
     def apply(self) -> None:
         """Persist the change to disk."""
@@ -28,6 +29,18 @@ class Change:
             return f"No change to {self.target_path}"
         else:
             return f"Update {self.target_path}"
+
+    def pretty_diff(self) -> str:
+        """Return a pretty-printed representation of what changed."""
+        if self.block_text:
+            return self.block_text
+        # Fallback: show the diff if block_text not available
+        if self.old_content == "":
+            return self.new_content
+        # Simple diff: show what was added
+        if len(self.new_content) > len(self.old_content):
+            return self.new_content[len(self.old_content):].lstrip("\n")
+        return self.new_content
 
 
 @dataclass(frozen=True)
@@ -124,7 +137,7 @@ class CodeFence:
         ]
 
 
-def preview_change(
+def copy_block(
     fence: CodeFence,
     source: Path,
     target_path: Path,
@@ -132,7 +145,7 @@ def preview_change(
     replace: bool = False,
     config_name: str = "config",
 ) -> Change | None:
-    """Preview what change would be made to install a fenced block.
+    """Copy a fenced block into a target file.
 
     Args:
         fence: CodeFence to identify the block
@@ -163,9 +176,9 @@ def preview_change(
             prefix = existing_content[0 : existing_blocks[0].content_location[0]]
             postfix = existing_content[existing_blocks[0].content_location[1] :]
             new_content = prefix + block.content + postfix
-            return Change(target_path, existing_content, new_content)
+            return Change(target_path, existing_content, new_content, block.text)
         return None  # Already exists and not replacing
 
     # Compute new content by appending the block
     new_content = existing_content + "\n" + block.text if existing_content else block.text
-    return Change(target_path, existing_content, new_content)
+    return Change(target_path, existing_content, new_content, block.text)

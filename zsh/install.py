@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from fencing import CodeFence, preview_change
+from fencing import CodeFence, copy_block
 from installman import installer
 
 HERE = Path(__file__).parent
@@ -57,7 +57,7 @@ def install_zsh(args: Namespace):
 
     if args.config == "all":
         for conf in configs.values():
-            change = preview_change(
+            change = copy_block(
                 fence=conf["fence"],
                 source=conf["source"],
                 target_path=rc_path,
@@ -71,18 +71,15 @@ def install_zsh(args: Namespace):
             if args.edit_rc:
                 change.apply()
                 print(f"{change.describe()}:")
-                # Show what block was added/replaced
-                block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
-                print(block.text)
+                print(change.pretty_diff())
             else:
                 print(f"# {change.describe()}")
                 print("run with --edit-rc to do this automatically")
-                block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
-                print(block.text)
+                print(change.pretty_diff())
         return
 
     conf = configs[args.config]
-    change = preview_change(
+    change = copy_block(
         fence=conf["fence"],
         source=conf["source"],
         target_path=rc_path,
@@ -96,13 +93,11 @@ def install_zsh(args: Namespace):
     if args.edit_rc:
         change.apply()
         print(f"{change.describe()}:")
-        block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
-        print(block.text)
+        print(change.pretty_diff())
     else:
         print(f"# {change.describe()}")
         print("run with --edit-rc to do this automatically")
-        block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
-        print(block.text)
+        print(change.pretty_diff())
 
 
 @install_zsh.parser

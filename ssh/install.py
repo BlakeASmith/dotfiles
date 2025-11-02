@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from fencing import CodeFence, preview_change
+from fencing import CodeFence, copy_block
 from installman import installer
 
 HERE = Path(__file__).parent
@@ -32,7 +32,7 @@ def install_ssh(args: Namespace):
     if ssh_config.exists():
         existing_config = ssh_config.read_text()
 
-    change = preview_change(
+    change = copy_block(
         fence=SSH_MULTIPLEXING_FENCE,
         source=HERE / "multiplexing",
         target_path=ssh_config,
@@ -46,13 +46,11 @@ def install_ssh(args: Namespace):
     if args.edit_config:
         change.apply()
         print(f"{change.describe()}:")
-        block = SSH_MULTIPLEXING_FENCE.find_blocks((HERE / "multiplexing").read_text())[0]
-        print(block.text)
+        print(change.pretty_diff())
     else:
         print(f"# {change.describe()}")
         print("run with --edit-config to do this automatically")
-        block = SSH_MULTIPLEXING_FENCE.find_blocks((HERE / "multiplexing").read_text())[0]
-        print(block.text)
+        print(change.pretty_diff())
 
 
 @install_ssh.parser
