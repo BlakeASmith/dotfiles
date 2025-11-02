@@ -44,8 +44,10 @@ def install_ssh(args: Namespace):
         print("you already have this config installed! Use --replace if you want to overwrite it")
         return
     
+    # Always show the diff
     print(f"# {change.describe()}")
     print(change.pretty_diff())
+    print()  # Blank line for readability
     
     if args.yes:
         change.apply()
