@@ -1,3 +1,4 @@
+import difflib
 import re
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
@@ -96,3 +97,54 @@ class CodeFence:
             )
             for smatch, ematch in startends
         ]
+
+
+def copy_block(
+    fence: CodeFence,
+    source: Path,
+    existing_content: str,
+    replace: bool = False,
+) -> tuple[str, str, bool]:
+    """Copy a fenced block into a target file.
+
+    Args:
+        fence: CodeFence to identify the block
+        source: Path to source file containing the block
+        target_path: Path to target configuration file
+        existing_content: Current content of the target file
+        replace: Whether to replace existing block if found
+        config_name: Name of config file for error messages
+
+    Returns:
+        Change object if a change is needed, None if already installed and replace=False
+
+    Raises:
+        ValueError: If multiple blocks matching the fence are found
+    """
+    block = fence.find_blocks(source.read_text())[0]
+    existing_blocks = fence.find_blocks(existing_content)
+    # expect zero or one existing_blocks
+    if len(existing_blocks) > 1:
+        existing_texts = "\n...".join((block.text for block in existing_blocks))
+        raise ValueError(
+            f"Your config has two or more existing blocks matching the {fence}, I don't know what to do here"
+        )
+
+    if existing_blocks:
+        if replace:
+            # Compute new content by replacing the existing block
+            prefix = existing_content[0 : existing_blocks[0].content_location[0]]
+            postfix = existing_content[existing_blocks[0].content_location[1] :]
+            new_content = prefix + block.content + postfix
+            return existing_content, new_content, True
+        return (
+            existing_content,
+            existing_content,
+            False,
+        )  # Already exists and not replacing
+
+    # Compute new content by appending the block
+    new_content = (
+        existing_content + "\n" + block.text if existing_content else block.text
+    )
+    return existing_content, new_content, True
