@@ -1,4 +1,5 @@
 import re
+import difflib
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from pathlib import Path
@@ -31,16 +32,30 @@ class Change:
             return f"Update {self.target_path}"
 
     def pretty_diff(self) -> str:
-        """Return a pretty-printed representation of what changed."""
-        if self.block_text:
-            return self.block_text
-        # Fallback: show the diff if block_text not available
-        if self.old_content == "":
-            return self.new_content
-        # Simple diff: show what was added
-        if len(self.new_content) > len(self.old_content):
-            return self.new_content[len(self.old_content):].lstrip("\n")
-        return self.new_content
+        """Return a pretty-printed diff showing what changed."""
+        old_lines = self.old_content.splitlines(keepends=True)
+        new_lines = self.new_content.splitlines(keepends=True)
+        
+        # Use unified diff format with context
+        diff = difflib.unified_diff(
+            old_lines,
+            new_lines,
+            fromfile=str(self.target_path),
+            tofile=str(self.target_path),
+            lineterm="",
+            n=3,  # Show 3 lines of context
+        )
+        
+        diff_lines = list(diff)
+        
+        # Skip the header lines (--- and +++) and return the actual diff
+        if len(diff_lines) > 2:
+            # Remove the first two lines (--- and +++ headers)
+            # and return the actual diff content
+            return "".join(diff_lines[2:])
+        
+        # If no diff (shouldn't happen), return empty
+        return ""
 
 
 @dataclass(frozen=True)
