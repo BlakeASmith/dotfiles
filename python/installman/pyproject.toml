@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "installman"
+version = "0.1.0"
+authors = [
+    {name = "Blake Smith", email = "blakeinvictoria@gmail.com"},
+]
+description = "A package for handling dotfiles with independant install scripts"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
