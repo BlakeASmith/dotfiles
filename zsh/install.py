@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from fencing import CodeFence, install_block
+from fencing import CodeFence, InstallResultType, install_block
 from installman import installer
 
 HERE = Path(__file__).parent
@@ -46,6 +46,28 @@ configs = {
 }
 
 
+def print_install_result(result) -> None:
+    """Print the result of an install_block operation."""
+    if result.type == InstallResultType.REPLACED:
+        print("replaced content with latest")
+        print(result.block_content)
+    elif result.type == InstallResultType.ALREADY_EXISTS:
+        print(
+            "you already have this config installed! Use --replace if you want to overwrite it"
+        )
+        print(result.existing_block_text)
+    elif result.type == InstallResultType.PREVIEW:
+        print(f"# add to your {result.target_path}")
+        print(f"run with {result.edit_flag_name} to do this automatically")
+        print(result.block_text)
+        if result.existing_block_text:
+            print(f"\n# This would replace the existing block:")
+            print(result.existing_block_text)
+    elif result.type == InstallResultType.INSTALLED:
+        print(f"added to the end of your {result.target_path}:")
+        print(result.block_text)
+
+
 @installer("zsh", help="install zsh config snippets")
 def install_zsh(args: Namespace):
     rc_path = HOME / ".zshrc"
@@ -57,7 +79,7 @@ def install_zsh(args: Namespace):
 
     if args.config == "all":
         for conf in configs.values():
-            install_block(
+            result = install_block(
                 fence=conf["fence"],
                 source=conf["source"],
                 target_path=rc_path,
@@ -67,10 +89,11 @@ def install_zsh(args: Namespace):
                 config_name=".zshrc",
                 edit_flag_name="--edit-rc",
             )
+            print_install_result(result)
         return
 
     conf = configs[args.config]
-    install_block(
+    result = install_block(
         fence=conf["fence"],
         source=conf["source"],
         target_path=rc_path,
@@ -80,6 +103,7 @@ def install_zsh(args: Namespace):
         config_name=".zshrc",
         edit_flag_name="--edit-rc",
     )
+    print_install_result(result)
 
 
 @install_zsh.parser

@@ -1,7 +1,29 @@
 import re
 from dataclasses import dataclass
+from enum import Enum
 from functools import cached_property, lru_cache
 from pathlib import Path
+
+
+class InstallResultType(Enum):
+    MULTIPLE_BLOCKS_FOUND = "multiple_blocks_found"
+    ALREADY_EXISTS = "already_exists"
+    REPLACED = "replaced"
+    PREVIEW = "preview"
+    INSTALLED = "installed"
+
+
+@dataclass(frozen=True)
+class InstallResult:
+    """Result of installing a fenced block."""
+    
+    type: InstallResultType
+    block_text: str
+    block_content: str
+    existing_block_text: str | None = None
+    config_name: str = "config"
+    target_path: Path | None = None
+    edit_flag_name: str = "--edit"
 
 
 @dataclass(frozen=True)
@@ -107,7 +129,7 @@ def install_block(
     edit: bool = True,
     config_name: str = "config",
     edit_flag_name: str = "--edit",
-) -> None:
+) -> InstallResult:
     """Install a fenced block into a configuration file.
 
     Args:
@@ -119,34 +141,72 @@ def install_block(
         edit: Whether to actually edit the file (False = preview only)
         config_name: Name of config file for error messages
         edit_flag_name: Name of edit flag for prompt messages
+        
+    Returns:
+        InstallResult indicating the outcome of the installation
+        
+    Raises:
+        ValueError: If multiple blocks matching the fence are found
     """
     block = fence.find_blocks(source.read_text())[0]
     existing_blocks = fence.find_blocks(existing_content)
     # expect zero or one existing_blocks
     if len(existing_blocks) > 1:
-        print("\n...".join((block.text for block in existing_blocks)))
+        existing_texts = "\n...".join((block.text for block in existing_blocks))
         raise ValueError(
             f"Your {config_name} has two or more existing blocks matching the {fence}, I don't know what to do here"
         )
 
     if existing_blocks:
         if replace:
-            _ = existing_blocks[0].replace(block.content, target_path)
-            print("replaced content with latest")
-            print(block.content)
-            return
-        print(
-            "you already have this config installed! Use --replace if you want to overwrite it"
+            if edit:
+                _ = existing_blocks[0].replace(block.content, target_path)
+                return InstallResult(
+                    type=InstallResultType.REPLACED,
+                    block_text=block.text,
+                    block_content=block.content,
+                    existing_block_text=existing_blocks[0].text,
+                    config_name=config_name,
+                    target_path=target_path,
+                    edit_flag_name=edit_flag_name,
+                )
+            else:
+                # Preview mode with replace - show what would be replaced
+                return InstallResult(
+                    type=InstallResultType.PREVIEW,
+                    block_text=block.text,
+                    block_content=block.content,
+                    existing_block_text=existing_blocks[0].text,
+                    config_name=config_name,
+                    target_path=target_path,
+                    edit_flag_name=edit_flag_name,
+                )
+        return InstallResult(
+            type=InstallResultType.ALREADY_EXISTS,
+            block_text=block.text,
+            block_content=block.content,
+            existing_block_text=existing_blocks[0].text,
+            config_name=config_name,
+            target_path=target_path,
+            edit_flag_name=edit_flag_name,
         )
-        print(existing_blocks[0].text)
-        return
 
     if not edit:
-        print(f"# add to your {target_path}")
-        print(f"run with {edit_flag_name} to do this automatically")
-        print(block.text)
-        return
+        return InstallResult(
+            type=InstallResultType.PREVIEW,
+            block_text=block.text,
+            block_content=block.content,
+            config_name=config_name,
+            target_path=target_path,
+            edit_flag_name=edit_flag_name,
+        )
 
     block.append_to(target_path)
-    print(f"added to the end of your {target_path}:")
-    print(block.text)
+    return InstallResult(
+        type=InstallResultType.INSTALLED,
+        block_text=block.text,
+        block_content=block.content,
+        config_name=config_name,
+        target_path=target_path,
+        edit_flag_name=edit_flag_name,
+    )

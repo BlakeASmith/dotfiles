@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from fencing import CodeFence, install_block
+from fencing import CodeFence, InstallResultType, install_block
 from installman import installer
 
 HERE = Path(__file__).parent
@@ -11,6 +11,28 @@ SSH_MULTIPLEXING_FENCE = CodeFence(
     start="### SSH MULTIPLEXING ###",
     end="### SSH MULTIPLEXING ###",
 )
+
+
+def print_install_result(result) -> None:
+    """Print the result of an install_block operation."""
+    if result.type == InstallResultType.REPLACED:
+        print("replaced content with latest")
+        print(result.block_content)
+    elif result.type == InstallResultType.ALREADY_EXISTS:
+        print(
+            "you already have this config installed! Use --replace if you want to overwrite it"
+        )
+        print(result.existing_block_text)
+    elif result.type == InstallResultType.PREVIEW:
+        print(f"# add to your {result.target_path}")
+        print(f"run with {result.edit_flag_name} to do this automatically")
+        print(result.block_text)
+        if result.existing_block_text:
+            print(f"\n# This would replace the existing block:")
+            print(result.existing_block_text)
+    elif result.type == InstallResultType.INSTALLED:
+        print(f"added to the end of your {result.target_path}:")
+        print(result.block_text)
 
 
 @installer("ssh", help="add ssh configuration snippets")
@@ -32,7 +54,7 @@ def install_ssh(args: Namespace):
     if ssh_config.exists():
         existing_config = ssh_config.read_text()
 
-    install_block(
+    result = install_block(
         fence=SSH_MULTIPLEXING_FENCE,
         source=HERE / "multiplexing",
         target_path=ssh_config,
@@ -42,6 +64,7 @@ def install_ssh(args: Namespace):
         config_name="SSH config",
         edit_flag_name="--edit-config",
     )
+    print_install_result(result)
 
 
 @install_ssh.parser
