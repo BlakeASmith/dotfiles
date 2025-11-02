@@ -6,7 +6,10 @@ from fileinput import hook_compressed
 from pathlib import Path
 
 fencing_path = Path(__file__).parent / "python/fencing"
+installman_path = Path(__file__).parent / "python/installman"
 sys.path.append(str(fencing_path))
+sys.path.append(str(installman_path))
+import installman
 from fencing import CodeFence, FencedBlock
 
 HERE = Path(__file__).parent
@@ -315,10 +318,5 @@ if __name__ == "__main__":
         nargs="+",
         choices=["all"] + list(p.name for p in (HERE / "bin").glob("*")),
     )
-    args = parser.parse_args()
-
-    if args._program not in dispatch:
-        parser.print_help()
-        exit(1)
-
-    dispatch[args._program](args)
+    # args = parser.parse_args()
+    installman.cli(HERE)

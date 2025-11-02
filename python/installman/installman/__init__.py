@@ -5,6 +5,7 @@ installman - utilities for writing standaolone installation scripts that combine
 
 import importlib.util
 import os
+import shutil
 import sys
 
 # pyright: reportPrivateUsage=false
@@ -98,6 +99,12 @@ def symlink_rec(source: Path, destination: Path, quiet: bool = False):
                 print(f"- symlinked {item} to {dest}")
 
 
+def dependency(str):
+    # routing through here in case we need logic later
+    # For example, to get things that would exist but not be on the PATH yet
+    return shutil.which(str)
+
+
 def __import_and_get_installers(module_path):
     """
     Dynamically imports a module from a file path and returns all global
@@ -136,7 +143,7 @@ def cli(root: Path | str, *args, **kwargs):
 
     root_parser = ArgumentParser(*args, **kwargs)
     subparsers = root_parser.add_subparsers(
-        dest="subcommand", help="Availible Installers:", required=True
+        dest="subcommand", help="Availible Installers:"
     )
 
     for installer in installers:
@@ -144,6 +151,9 @@ def cli(root: Path | str, *args, **kwargs):
         installer._setup_parser(subparser)
 
     args = root_parser.parse_args()
+    if args.subcommand is None:
+        root_parser.print_help()
+        exit(1)
     {installer.name: installer.install for installer in installers}[args.subcommand](
         args
     )
