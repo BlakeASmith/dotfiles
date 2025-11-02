@@ -1,8 +1,33 @@
 import re
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from pathlib import Path
+
+
+class Change:
+    """Represents a change to be applied to a file.
+    
+    This is a command pattern - the change is computed in memory,
+    and apply() persists it to disk.
+    """
+
+    def __init__(self, target_path: Path, old_content: str, new_content: str):
+        self.target_path = target_path
+        self.old_content = old_content
+        self.new_content = new_content
+
+    def apply(self) -> None:
+        """Persist the change to disk."""
+        self.target_path.write_text(self.new_content)
+
+    def describe(self) -> str:
+        """Return a description of what this change would do."""
+        if self.old_content == "":
+            return f"Create {self.target_path}"
+        elif self.old_content == self.new_content:
+            return f"No change to {self.target_path}"
+        else:
+            return f"Update {self.target_path}"
 
 
 @dataclass(frozen=True)
@@ -35,48 +60,6 @@ class FencedBlock:
             _ = source.write_text(new_file_content)
 
         return new_file_content
-
-
-class Change(ABC):
-    """Represents a change to be made to a file."""
-
-    def __init__(self, target_path: Path, block: FencedBlock):
-        self.target_path = target_path
-        self.block = block
-
-    @abstractmethod
-    def apply(self) -> None:
-        """Apply this change to the target file."""
-        pass
-
-    @abstractmethod
-    def describe(self) -> str:
-        """Return a description of what this change would do."""
-        pass
-
-
-class AppendChange(Change):
-    """Change that appends a block to the end of a file."""
-
-    def apply(self) -> None:
-        self.block.append_to(self.target_path)
-
-    def describe(self) -> str:
-        return f"Append to {self.target_path}"
-
-
-class ReplaceChange(Change):
-    """Change that replaces an existing block."""
-
-    def __init__(self, target_path: Path, block: FencedBlock, existing_block: FencedBlock):
-        super().__init__(target_path, block)
-        self.existing_block = existing_block
-
-    def apply(self) -> None:
-        self.existing_block.replace(self.block.content, self.target_path)
-
-    def describe(self) -> str:
-        return f"Replace existing block in {self.target_path}"
 
 
 @dataclass(frozen=True)
@@ -176,7 +159,13 @@ def preview_change(
 
     if existing_blocks:
         if replace:
-            return ReplaceChange(target_path, block, existing_blocks[0])
+            # Compute new content by replacing the existing block
+            prefix = existing_content[0 : existing_blocks[0].content_location[0]]
+            postfix = existing_content[existing_blocks[0].content_location[1] :]
+            new_content = prefix + block.content + postfix
+            return Change(target_path, existing_content, new_content)
         return None  # Already exists and not replacing
 
-    return AppendChange(target_path, block)
+    # Compute new content by appending the block
+    new_content = existing_content + "\n" + block.text if existing_content else block.text
+    return Change(target_path, existing_content, new_content)

@@ -71,11 +71,14 @@ def install_zsh(args: Namespace):
             if args.edit_rc:
                 change.apply()
                 print(f"{change.describe()}:")
-                print(change.block.text)
+                # Show what block was added/replaced
+                block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
+                print(block.text)
             else:
                 print(f"# {change.describe()}")
                 print("run with --edit-rc to do this automatically")
-                print(change.block.text)
+                block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
+                print(block.text)
         return
 
     conf = configs[args.config]
@@ -93,11 +96,13 @@ def install_zsh(args: Namespace):
     if args.edit_rc:
         change.apply()
         print(f"{change.describe()}:")
-        print(change.block.text)
+        block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
+        print(block.text)
     else:
         print(f"# {change.describe()}")
         print("run with --edit-rc to do this automatically")
-        print(change.block.text)
+        block = conf["fence"].find_blocks((HERE / conf["source"]).read_text())[0]
+        print(block.text)
 
 
 @install_zsh.parser

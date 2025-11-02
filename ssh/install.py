@@ -46,11 +46,13 @@ def install_ssh(args: Namespace):
     if args.edit_config:
         change.apply()
         print(f"{change.describe()}:")
-        print(change.block.text)
+        block = SSH_MULTIPLEXING_FENCE.find_blocks((HERE / "multiplexing").read_text())[0]
+        print(block.text)
     else:
         print(f"# {change.describe()}")
         print("run with --edit-config to do this automatically")
-        print(change.block.text)
+        block = SSH_MULTIPLEXING_FENCE.find_blocks((HERE / "multiplexing").read_text())[0]
+        print(block.text)
 
 
 @install_ssh.parser
