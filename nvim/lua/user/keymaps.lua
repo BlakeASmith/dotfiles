@@ -1,12 +1,22 @@
 -- keymap to get to keymaps
-vim.keymap.set({ "n" }, "<leader>km", function()
+local quickkeymap = function()
 	vim.cmd("sp | e ~/.config/nvim/lua/user/keymaps.lua")
-	vim.cmd("res 30")
-	-- source it
-	vim.cmd("source %")
-	-- kill it
-	vim.keymap.set("n", "q", "<cmd>bdelete<CR>", { buffer = true, desc = "Delete current buffer" })
-end, { desc = "open keybindings config" })
+	vim.cmd("res 25")
+
+	vim.keymap.set("n", "q", function()
+		-- source it
+		vim.cmd("update | source %")
+		-- kill it
+		vim.cmd("bdelete")
+	end, { buffer = true, desc = "Delete current buffer" })
+
+	-- I probably want to go to the end
+	vim.cmd("norm G")
+end
+
+vim.keymap.set({ "n" }, "<leader>km", quickkeymap, { desc = "open keybindings config" })
+
+vim.keymap.set("n", "<leader>kb", quickkeymap, { desc = "Edit keymaps" })
 
 -- general re-binds
 vim.keymap.set({ "n", "v" }, ";", ":", { desc = "classic" })
@@ -35,5 +45,6 @@ vim.keymap.set("n", "<leader>oi", ":Oil<CR>", { desc = "Oil!" })
 
 -- Map <leader>ls to list document symbols
 vim.keymap.set("n", "<leader>ls", vim.lsp.buf.document_symbol, { desc = "List Document Symbols" })
+
 -- Or, if you prefer Telescope's UI (recommended):
 vim.keymap.set("n", "<leader>fS", ":Telescope lsp_document_symbols<CR>", { desc = "List Document Symbols (Telescope)" })
