@@ -1,14 +1,9 @@
 import os
 import shutil
 import subprocess
-import sys
 from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
-
-HERE_PARENT = Path(__file__).parent.parent
-installman_path = HERE_PARENT / "python/installman"
-sys.path.append(str(installman_path))
 
 from installman import dependency, installer
 

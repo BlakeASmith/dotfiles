@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
-import sys
 from argparse import ArgumentParser, Namespace
 from os import system
-from pathlib import Path
 from shutil import which
-
-HERE_PARENT = Path(__file__).parent.parent
-installman_path = HERE_PARENT / "python/installman"
-sys.path.append(str(installman_path))
 
 from installman import dependency, installer
 

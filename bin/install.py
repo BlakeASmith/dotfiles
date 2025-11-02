@@ -1,10 +1,5 @@
-import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-
-HERE_PARENT = Path(__file__).parent.parent
-installman_path = HERE_PARENT / "python/installman"
-sys.path.append(str(installman_path))
 
 from installman import installer
 
