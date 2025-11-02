@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from fencing import CodeFence, InstallResultType, install_block
+from fencing import CodeFence, preview_change
 from installman import installer
 
 HERE = Path(__file__).parent
@@ -46,28 +46,6 @@ configs = {
 }
 
 
-def print_install_result(result) -> None:
-    """Print the result of an install_block operation."""
-    if result.type == InstallResultType.REPLACED:
-        print("replaced content with latest")
-        print(result.block_content)
-    elif result.type == InstallResultType.ALREADY_EXISTS:
-        print(
-            "you already have this config installed! Use --replace if you want to overwrite it"
-        )
-        print(result.existing_block_text)
-    elif result.type == InstallResultType.PREVIEW:
-        print(f"# add to your {result.target_path}")
-        print("run with --edit-rc to do this automatically")
-        print(result.block_text)
-        if result.existing_block_text:
-            print(f"\n# This would replace the existing block:")
-            print(result.existing_block_text)
-    elif result.type == InstallResultType.INSTALLED:
-        print(f"added to the end of your {result.target_path}:")
-        print(result.block_text)
-
-
 @installer("zsh", help="install zsh config snippets")
 def install_zsh(args: Namespace):
     rc_path = HOME / ".zshrc"
@@ -79,29 +57,47 @@ def install_zsh(args: Namespace):
 
     if args.config == "all":
         for conf in configs.values():
-            result = install_block(
+            change = preview_change(
                 fence=conf["fence"],
                 source=conf["source"],
                 target_path=rc_path,
                 existing_content=rc_sh,
-                edit=args.edit_rc,
                 replace=args.replace,
                 config_name=".zshrc",
             )
-            print_install_result(result)
+            if change is None:
+                print("you already have this config installed! Use --replace if you want to overwrite it")
+                continue
+            if args.edit_rc:
+                change.apply()
+                print(f"{change.describe()}:")
+                print(change.block.text)
+            else:
+                print(f"# {change.describe()}")
+                print("run with --edit-rc to do this automatically")
+                print(change.block.text)
         return
 
     conf = configs[args.config]
-    result = install_block(
+    change = preview_change(
         fence=conf["fence"],
         source=conf["source"],
         target_path=rc_path,
         existing_content=rc_sh,
-        edit=args.edit_rc,
         replace=args.replace,
         config_name=".zshrc",
     )
-    print_install_result(result)
+    if change is None:
+        print("you already have this config installed! Use --replace if you want to overwrite it")
+        return
+    if args.edit_rc:
+        change.apply()
+        print(f"{change.describe()}:")
+        print(change.block.text)
+    else:
+        print(f"# {change.describe()}")
+        print("run with --edit-rc to do this automatically")
+        print(change.block.text)
 
 
 @install_zsh.parser

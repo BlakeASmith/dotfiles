@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from fencing import CodeFence, InstallResultType, install_block
+from fencing import CodeFence, preview_change
 from installman import installer
 
 HERE = Path(__file__).parent
@@ -11,28 +11,6 @@ SSH_MULTIPLEXING_FENCE = CodeFence(
     start="### SSH MULTIPLEXING ###",
     end="### SSH MULTIPLEXING ###",
 )
-
-
-def print_install_result(result) -> None:
-    """Print the result of an install_block operation."""
-    if result.type == InstallResultType.REPLACED:
-        print("replaced content with latest")
-        print(result.block_content)
-    elif result.type == InstallResultType.ALREADY_EXISTS:
-        print(
-            "you already have this config installed! Use --replace if you want to overwrite it"
-        )
-        print(result.existing_block_text)
-    elif result.type == InstallResultType.PREVIEW:
-        print(f"# add to your {result.target_path}")
-        print("run with --edit-config to do this automatically")
-        print(result.block_text)
-        if result.existing_block_text:
-            print(f"\n# This would replace the existing block:")
-            print(result.existing_block_text)
-    elif result.type == InstallResultType.INSTALLED:
-        print(f"added to the end of your {result.target_path}:")
-        print(result.block_text)
 
 
 @installer("ssh", help="add ssh configuration snippets")
@@ -54,16 +32,25 @@ def install_ssh(args: Namespace):
     if ssh_config.exists():
         existing_config = ssh_config.read_text()
 
-    result = install_block(
+    change = preview_change(
         fence=SSH_MULTIPLEXING_FENCE,
         source=HERE / "multiplexing",
         target_path=ssh_config,
         existing_content=existing_config,
-        edit=args.edit_config,
         replace=args.replace,
         config_name="SSH config",
     )
-    print_install_result(result)
+    if change is None:
+        print("you already have this config installed! Use --replace if you want to overwrite it")
+        return
+    if args.edit_config:
+        change.apply()
+        print(f"{change.describe()}:")
+        print(change.block.text)
+    else:
+        print(f"# {change.describe()}")
+        print("run with --edit-config to do this automatically")
+        print(change.block.text)
 
 
 @install_ssh.parser

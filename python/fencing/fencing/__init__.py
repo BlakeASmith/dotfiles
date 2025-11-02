@@ -1,28 +1,8 @@
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
 from functools import cached_property, lru_cache
 from pathlib import Path
-
-
-class InstallResultType(Enum):
-    MULTIPLE_BLOCKS_FOUND = "multiple_blocks_found"
-    ALREADY_EXISTS = "already_exists"
-    REPLACED = "replaced"
-    PREVIEW = "preview"
-    INSTALLED = "installed"
-
-
-@dataclass(frozen=True)
-class InstallResult:
-    """Result of installing a fenced block."""
-    
-    type: InstallResultType
-    block_text: str
-    block_content: str
-    existing_block_text: str | None = None
-    config_name: str = "config"
-    target_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +35,48 @@ class FencedBlock:
             _ = source.write_text(new_file_content)
 
         return new_file_content
+
+
+class Change(ABC):
+    """Represents a change to be made to a file."""
+
+    def __init__(self, target_path: Path, block: FencedBlock):
+        self.target_path = target_path
+        self.block = block
+
+    @abstractmethod
+    def apply(self) -> None:
+        """Apply this change to the target file."""
+        pass
+
+    @abstractmethod
+    def describe(self) -> str:
+        """Return a description of what this change would do."""
+        pass
+
+
+class AppendChange(Change):
+    """Change that appends a block to the end of a file."""
+
+    def apply(self) -> None:
+        self.block.append_to(self.target_path)
+
+    def describe(self) -> str:
+        return f"Append to {self.target_path}"
+
+
+class ReplaceChange(Change):
+    """Change that replaces an existing block."""
+
+    def __init__(self, target_path: Path, block: FencedBlock, existing_block: FencedBlock):
+        super().__init__(target_path, block)
+        self.existing_block = existing_block
+
+    def apply(self) -> None:
+        self.existing_block.replace(self.block.content, self.target_path)
+
+    def describe(self) -> str:
+        return f"Replace existing block in {self.target_path}"
 
 
 @dataclass(frozen=True)
@@ -119,29 +141,27 @@ class CodeFence:
         ]
 
 
-def install_block(
+def preview_change(
     fence: CodeFence,
     source: Path,
     target_path: Path,
     existing_content: str,
     replace: bool = False,
-    edit: bool = True,
     config_name: str = "config",
-) -> InstallResult:
-    """Install a fenced block into a configuration file.
+) -> Change | None:
+    """Preview what change would be made to install a fenced block.
 
     Args:
         fence: CodeFence to identify the block
         source: Path to source file containing the block
         target_path: Path to target configuration file
         existing_content: Current content of the target file
-        replace: Whether to replace existing block
-        edit: Whether to actually edit the file (False = preview only)
+        replace: Whether to replace existing block if found
         config_name: Name of config file for error messages
-        
+
     Returns:
-        InstallResult indicating the outcome of the installation
-        
+        Change object if a change is needed, None if already installed and replace=False
+
     Raises:
         ValueError: If multiple blocks matching the fence are found
     """
@@ -156,49 +176,7 @@ def install_block(
 
     if existing_blocks:
         if replace:
-            if edit:
-                _ = existing_blocks[0].replace(block.content, target_path)
-                return InstallResult(
-                    type=InstallResultType.REPLACED,
-                    block_text=block.text,
-                    block_content=block.content,
-                    existing_block_text=existing_blocks[0].text,
-                    config_name=config_name,
-                    target_path=target_path,
-                )
-            else:
-                # Preview mode with replace - show what would be replaced
-                return InstallResult(
-                    type=InstallResultType.PREVIEW,
-                    block_text=block.text,
-                    block_content=block.content,
-                    existing_block_text=existing_blocks[0].text,
-                    config_name=config_name,
-                    target_path=target_path,
-                )
-        return InstallResult(
-            type=InstallResultType.ALREADY_EXISTS,
-            block_text=block.text,
-            block_content=block.content,
-            existing_block_text=existing_blocks[0].text,
-            config_name=config_name,
-            target_path=target_path,
-        )
+            return ReplaceChange(target_path, block, existing_blocks[0])
+        return None  # Already exists and not replacing
 
-    if not edit:
-        return InstallResult(
-            type=InstallResultType.PREVIEW,
-            block_text=block.text,
-            block_content=block.content,
-            config_name=config_name,
-            target_path=target_path,
-        )
-
-    block.append_to(target_path)
-    return InstallResult(
-        type=InstallResultType.INSTALLED,
-        block_text=block.text,
-        block_content=block.content,
-        config_name=config_name,
-        target_path=target_path,
-    )
+    return AppendChange(target_path, block)
