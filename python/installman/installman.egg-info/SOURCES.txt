@@ -1,0 +1,6 @@
+pyproject.toml
+installman/__init__.py
+installman.egg-info/PKG-INFO
+installman.egg-info/SOURCES.txt
+installman.egg-info/dependency_links.txt
+installman.egg-info/top_level.txt
