@@ -43,21 +43,27 @@ def install_ssh(args: Namespace):
     if change is None:
         print("you already have this config installed! Use --replace if you want to overwrite it")
         return
-    if args.edit_config:
+    
+    print(f"# {change.describe()}")
+    print(change.pretty_diff())
+    
+    if args.yes:
         change.apply()
-        print(f"{change.describe()}:")
-        print(change.pretty_diff())
+        print(f"Applied: {change.describe()}")
     else:
-        print(f"# {change.describe()}")
-        print("run with --edit-config to do this automatically")
-        print(change.pretty_diff())
+        response = input("Apply this change? [y/N]: ").strip().lower()
+        if response == "y":
+            change.apply()
+            print(f"Applied: {change.describe()}")
+        else:
+            print("Skipped.")
 
 
 @install_ssh.parser
 def setup_ssh_args(parser: ArgumentParser):
     _ = parser.add_argument(
-        "--edit-config",
-        help="whether to modify the SSH config file",
+        "--yes",
+        help="automatically approve changes without prompting",
         action="store_true",
     )
     _ = parser.add_argument(

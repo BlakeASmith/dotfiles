@@ -68,14 +68,20 @@ def install_zsh(args: Namespace):
             if change is None:
                 print("you already have this config installed! Use --replace if you want to overwrite it")
                 continue
-            if args.edit_rc:
+            
+            print(f"# {change.describe()}")
+            print(change.pretty_diff())
+            
+            if args.yes:
                 change.apply()
-                print(f"{change.describe()}:")
-                print(change.pretty_diff())
+                print(f"Applied: {change.describe()}")
             else:
-                print(f"# {change.describe()}")
-                print("run with --edit-rc to do this automatically")
-                print(change.pretty_diff())
+                response = input("Apply this change? [y/N]: ").strip().lower()
+                if response == "y":
+                    change.apply()
+                    print(f"Applied: {change.describe()}")
+                else:
+                    print("Skipped.")
         return
 
     conf = configs[args.config]
@@ -90,23 +96,29 @@ def install_zsh(args: Namespace):
     if change is None:
         print("you already have this config installed! Use --replace if you want to overwrite it")
         return
-    if args.edit_rc:
+    
+    print(f"# {change.describe()}")
+    print(change.pretty_diff())
+    
+    if args.yes:
         change.apply()
-        print(f"{change.describe()}:")
-        print(change.pretty_diff())
+        print(f"Applied: {change.describe()}")
     else:
-        print(f"# {change.describe()}")
-        print("run with --edit-rc to do this automatically")
-        print(change.pretty_diff())
+        response = input("Apply this change? [y/N]: ").strip().lower()
+        if response == "y":
+            change.apply()
+            print(f"Applied: {change.describe()}")
+        else:
+            print("Skipped.")
 
 
 @install_zsh.parser
 def setup_zsh_args(parser: ArgumentParser):
     _ = parser.add_argument(
-        "--edit-rc", help="whether to modify the zshrc file", action="store_true"
+        "--yes", help="automatically approve changes without prompting", action="store_true"
     )
     _ = parser.add_argument(
-        "--replace", help="whether to modify the zshrc file", action="store_true"
+        "--replace", help="whether to replace existing blocks", action="store_true"
     )
 
     parser_configs = parser.add_subparsers(
