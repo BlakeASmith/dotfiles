@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from fencing import CodeFence, copy_block
-from installman import installer
+from installman import SingleFileChange, installer
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -56,68 +56,32 @@ def install_zsh(args: Namespace):
         rc_sh = ""
 
     if args.config == "all":
-        for conf in configs.values():
-            change = copy_block(
-                fence=conf["fence"],
-                source=conf["source"],
-                target_path=rc_path,
-                existing_content=rc_sh,
-                replace=args.replace,
-                config_name=".zshrc",
-            )
-            if change is None:
-                print("you already have this config installed! Use --replace if you want to overwrite it")
-                continue
-            
-            print(f"# {change.describe()}")
-            print(change.pretty_diff())
-            
-            if args.yes:
-                change.apply()
-                print(f"Applied: {change.describe()}")
-            else:
-                response = input("Apply this change? [y/N]: ").strip().lower()
-                if response == "y":
-                    change.apply()
-                    print(f"Applied: {change.describe()}")
-                else:
-                    print("Skipped.")
-        return
-
-    conf = configs[args.config]
-    change = copy_block(
-        fence=conf["fence"],
-        source=conf["source"],
-        target_path=rc_path,
-        existing_content=rc_sh,
-        replace=args.replace,
-        config_name=".zshrc",
-    )
-    if change is None:
-        print("you already have this config installed! Use --replace if you want to overwrite it")
-        return
-    
-    # Always show the diff
-    print(f"# {change.describe()}")
-    print(change.pretty_diff())
-    print()  # Blank line for readability
-    
-    if args.yes:
-        change.apply()
-        print(f"Applied: {change.describe()}")
+        _configs = configs
     else:
-        response = input("Apply this change? [y/N]: ").strip().lower()
-        if response == "y":
-            change.apply()
-            print(f"Applied: {change.describe()}")
-        else:
-            print("Skipped.")
+        _configs = {args.config: configs[args.config]}
+
+    for conf in configs.values():
+        before, after, changed = copy_block(
+            fence=conf["fence"],  # pyright: ignore
+            source=conf["source"],  # pyright: ignore
+            existing_content=rc_sh,
+            replace=args.replace,
+        )
+        if not changed:
+            print(
+                "you already have this config installed! Use --replace if you want to overwrite it"
+            )
+            continue
+        change = SingleFileChange(before, after, rc_path)
+        change.confirm(yes=args.yes)
 
 
 @install_zsh.parser
 def setup_zsh_args(parser: ArgumentParser):
     _ = parser.add_argument(
-        "--yes", help="automatically approve changes without prompting", action="store_true"
+        "--yes",
+        help="automatically approve changes without prompting",
+        action="store_true",
     )
     _ = parser.add_argument(
         "--replace", help="whether to replace existing blocks", action="store_true"

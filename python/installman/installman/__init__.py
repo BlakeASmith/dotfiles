@@ -3,6 +3,7 @@ installman - utilities for writing standaolone installation scripts that combine
     into a person dotfile management CLI
 """
 
+import difflib
 import importlib.util
 import os
 import shutil
@@ -15,6 +16,7 @@ import sys
 # pyright: reportMissingParameterType=false
 from argparse import ArgumentParser, Namespace, _SubParsersAction
 from pathlib import Path
+from tracemalloc import start
 from typing import Any, Callable, final
 
 type Subparsers = _SubParsersAction[ArgumentParser]
@@ -103,6 +105,108 @@ def dependency(str):
     # routing through here in case we need logic later
     # For example, to get things that would exist but not be on the PATH yet
     return shutil.which(str)
+
+
+@final
+class SingleFileChange:
+    def __init__(self, before: str | None, after: str, path: Path) -> None:
+        if self.before is None:
+            self.before = ""
+        # assuming there is some content
+        # not handling the case there isn't, so better to fail loudly
+        assert self.after
+        self.before = before
+        self.after = after
+        self.path = path
+
+    def apply(self):
+        _ = self.path.write_text(self.after)
+
+    def diff(self, contextlines=2):
+        assert self.before is not None
+        _diff = difflib.unified_diff(
+            self.before.splitlines(keepends=True),
+            self.after.splitlines(keepends=True),
+            fromfile=str(self.path),
+            tofile=str(self.path),
+            n=contextlines,
+        )
+        return "".join(_diff)
+
+    def confirm(
+        self,
+        yes=False,
+        prompt="Apply this change? [y/N]: ",
+        onapplied=lambda: print("Applied!"),
+        onabort=lambda: print("Skipped!"),
+    ):
+        print(f"Changes to {self.path}:")
+        print(self.diff())
+
+        global confirm
+        if confirm(yes=yes, prompt=prompt):
+            self.apply()
+            onapplied()
+        else:
+            onabort()
+
+
+def confirm(
+    *,
+    yes=False,
+    prompt="Apply this change? [y/N]: ",
+):
+    if yes:
+        return True
+
+    response = input(prompt).strip().lower()
+    if response.startswith("y"):
+        return True
+    else:
+        return False
+
+
+def confirm_dir(
+    path: Path, *, yes=False, prompt=None, mode=511, parents=True, follow_symlinks=True
+):
+    if path.exists(follow_symlinks=follow_symlinks):
+        return True
+
+    if prompt is None:
+        prompt = f"{path} does not exist, should we create it now? (y/N): "
+
+    if confirm(yes=yes, prompt=prompt):
+        path.mkdir(mode=mode, parents=parents)
+        return True
+
+    return False
+
+
+def confirm_file(
+    path: Path,
+    *,
+    yes=False,
+    prompt=None,
+    follow_symlinks=True,
+    starter_content: str | None = None,
+):
+    assert not path.is_dir()
+    if path.exists(follow_symlinks=follow_symlinks):
+        return True
+
+    if prompt is None:
+        prompt = f"{path} does not exist, should we create it now? (y/N): "
+
+    if confirm(yes=yes, prompt=prompt):
+        path.touch()
+        if starter_content is not None:
+            path.write_text(starter_content)
+        return True
+
+    return False
+
+
+type Change = SingleFileChange
 
 
 def __import_and_get_installers(module_path):

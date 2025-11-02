@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from fencing import CodeFence, copy_block
-from installman import installer
+from installman import SingleFileChange, confirm, confirm_dir, confirm_file, installer
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -20,45 +20,25 @@ def install_ssh(args: Namespace):
     ssh_config = ssh_dir / "config"
     sockets_dir = ssh_dir / "sockets"
 
-    # Create .ssh directory if it doesn't exist
-    ssh_dir.mkdir(mode=0o700, exist_ok=True)
+    _ = confirm_dir(ssh_dir, yes=args.yes)
+    _ = confirm_dir(sockets_dir, yes=args.yes)
 
-    # Create sockets directory if it doesn't exist
-    sockets_dir.mkdir(mode=0o700, exist_ok=True)
-    print(f"created sockets directory: {sockets_dir}")
+    if not confirm_file(ssh_config):
+        print("OK, aborting then :p")
+        return
 
-    # Read existing config if it exists
-    existing_config = ""
-    if ssh_config.exists():
-        existing_config = ssh_config.read_text()
+    existing_config = ssh_config.read_text()
 
-    change = copy_block(
+    before, after, changed = copy_block(
         fence=SSH_MULTIPLEXING_FENCE,
         source=HERE / "multiplexing",
-        target_path=ssh_config,
         existing_content=existing_config,
-        replace=args.replace,
-        config_name="SSH config",
+        replace=True,
     )
-    if change is None:
-        print("you already have this config installed! Use --replace if you want to overwrite it")
-        return
-    
-    # Always show the diff
-    print(f"# {change.describe()}")
-    print(change.pretty_diff())
-    print()  # Blank line for readability
-    
-    if args.yes:
-        change.apply()
-        print(f"Applied: {change.describe()}")
-    else:
-        response = input("Apply this change? [y/N]: ").strip().lower()
-        if response == "y":
-            change.apply()
-            print(f"Applied: {change.describe()}")
-        else:
-            print("Skipped.")
+
+    SingleFileChange(before, after, ssh_config).confirm(
+        yes=args.yes,
+    )
 
 
 @install_ssh.parser
@@ -66,10 +46,5 @@ def setup_ssh_args(parser: ArgumentParser):
     _ = parser.add_argument(
         "--yes",
         help="automatically approve changes without prompting",
-        action="store_true",
-    )
-    _ = parser.add_argument(
-        "--replace",
-        help="whether to replace existing SSH multiplexing config",
         action="store_true",
     )

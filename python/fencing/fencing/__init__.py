@@ -1,61 +1,8 @@
-import re
 import difflib
+import re
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from pathlib import Path
-
-
-class Change:
-    """Represents a change to be applied to a file.
-    
-    This is a command pattern - the change is computed in memory,
-    and apply() persists it to disk.
-    """
-
-    def __init__(self, target_path: Path, old_content: str, new_content: str, block_text: str | None = None):
-        self.target_path = target_path
-        self.old_content = old_content
-        self.new_content = new_content
-        self.block_text = block_text  # The block that was added/replaced, for pretty printing
-
-    def apply(self) -> None:
-        """Persist the change to disk."""
-        self.target_path.write_text(self.new_content)
-
-    def describe(self) -> str:
-        """Return a description of what this change would do."""
-        if self.old_content == "":
-            return f"Create {self.target_path}"
-        elif self.old_content == self.new_content:
-            return f"No change to {self.target_path}"
-        else:
-            return f"Update {self.target_path}"
-
-    def pretty_diff(self) -> str:
-        """Return a pretty-printed diff showing what changed."""
-        old_lines = self.old_content.splitlines(keepends=True)
-        new_lines = self.new_content.splitlines(keepends=True)
-        
-        # Use unified diff format with context
-        diff = difflib.unified_diff(
-            old_lines,
-            new_lines,
-            fromfile=str(self.target_path),
-            tofile=str(self.target_path),
-            lineterm="",
-            n=3,  # Show 3 lines of context
-        )
-        
-        diff_lines = list(diff)
-        
-        # Skip the header lines (--- and +++) and return the actual diff
-        if len(diff_lines) > 2:
-            # Remove the first two lines (--- and +++ headers)
-            # and return the actual diff content
-            return "".join(diff_lines[2:])
-        
-        # If no diff (shouldn't happen), return empty
-        return ""
 
 
 @dataclass(frozen=True)
@@ -155,11 +102,9 @@ class CodeFence:
 def copy_block(
     fence: CodeFence,
     source: Path,
-    target_path: Path,
     existing_content: str,
     replace: bool = False,
-    config_name: str = "config",
-) -> Change | None:
+) -> tuple[str, str, bool]:
     """Copy a fenced block into a target file.
 
     Args:
@@ -182,7 +127,7 @@ def copy_block(
     if len(existing_blocks) > 1:
         existing_texts = "\n...".join((block.text for block in existing_blocks))
         raise ValueError(
-            f"Your {config_name} has two or more existing blocks matching the {fence}, I don't know what to do here"
+            f"Your config has two or more existing blocks matching the {fence}, I don't know what to do here"
         )
 
     if existing_blocks:
@@ -191,9 +136,15 @@ def copy_block(
             prefix = existing_content[0 : existing_blocks[0].content_location[0]]
             postfix = existing_content[existing_blocks[0].content_location[1] :]
             new_content = prefix + block.content + postfix
-            return Change(target_path, existing_content, new_content, block.text)
-        return None  # Already exists and not replacing
+            return existing_content, new_content, True
+        return (
+            existing_content,
+            existing_content,
+            False,
+        )  # Already exists and not replacing
 
     # Compute new content by appending the block
-    new_content = existing_content + "\n" + block.text if existing_content else block.text
-    return Change(target_path, existing_content, new_content, block.text)
+    new_content = (
+        existing_content + "\n" + block.text if existing_content else block.text
+    )
+    return existing_content, new_content, True
