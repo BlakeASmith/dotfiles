@@ -5,3 +5,11 @@
 python/fencing/fencing.egg-info
 python/fencing/fencing/__pycache__
 nvim/lazy-lock.json
+python/installman/build/lib/installman
+zsh/__pycache__
+ssh/__pycache__
+nvim/__pycache__
+lazygit/__pycache__
+bob/__pycache__
+bin/__pycache__
+__pycache__
