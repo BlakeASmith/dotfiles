@@ -2,7 +2,7 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from installman import confirm, confirm_dir, confirm_symlink, installer, path_exists
+from installman import confirm, confirm_dir, confirm_symlink, confirm_brewed, installer, path_exists
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -15,6 +15,12 @@ def install_tmux(args: Namespace):
     """Install tmux configuration with TPM setup."""
     tmux_config = HOME / ".tmux.conf"
     source_config = HERE / "tmux.conf"
+
+    # Install tmux if not already installed
+    tmux_path = confirm_brewed("tmux", yes=args.yes)
+    if not tmux_path:
+        print("tmux not available. Install tmux first or use --yes to install automatically.")
+        return
 
     # Install TPM if not already installed
     if not args.no_tpm:

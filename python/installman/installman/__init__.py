@@ -7,6 +7,7 @@ import difflib
 import importlib.util
 import os
 import shutil
+import subprocess
 import sys
 
 # pyright: reportPrivateUsage=false
@@ -182,9 +183,56 @@ def confirm_dir(
     return False
 
 
-def path_exists(path: Path, *, follow_symlinks: bool = True) -> bool:
-    """Check if a path exists without creating it."""
-    return path.exists(follow_symlinks=follow_symlinks)
+def confirm_brewed(
+    package: str,
+    *,
+    yes: bool = False,
+) -> str | None:
+    """Confirm and install a package via Homebrew if not already on PATH.
+    
+    Args:
+        package: The package name to install (e.g., 'tmux', 'git')
+        yes: Automatically approve installation without prompting
+        
+    Returns:
+        Path to the installed package executable, or None if declined/not found
+    """
+    # Check if package already exists on PATH
+    package_path = dependency(package)
+    if package_path:
+        return package_path
+    
+    # Check if brew is available
+    brew_path = dependency("brew")
+    if not brew_path:
+        print(f"brew not found. Cannot install {package}.")
+        print("Please install Homebrew first: https://brew.sh/")
+        return None
+    
+    # Prompt for installation
+    if not confirm(
+        yes=yes,
+        prompt=f"{package} not found on PATH. Install via Homebrew? [y/N]: ",
+    ):
+        print(f"Skipping {package} installation")
+        return None
+    
+    # Install via brew
+    print(f"Installing {package} via Homebrew...")
+    
+    try:
+        subprocess.run(
+            [brew_path, "install", package],
+            check=True,
+        )
+        print(f"{package} installed successfully")
+        
+        # Get the path to the newly installed package
+        installed_path = dependency(package)
+        return installed_path
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install {package}: {e}")
+        return None
 
 
 def confirm_symlink(
