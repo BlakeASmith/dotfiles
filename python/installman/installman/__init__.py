@@ -192,7 +192,6 @@ def confirm_symlink(
     destination: Path,
     *,
     yes: bool = False,
-    force: bool = False,
     backup: bool = True,
 ) -> bool:
     """Confirm and create a symlink from source to destination.
@@ -200,8 +199,7 @@ def confirm_symlink(
     Args:
         source: The file/directory to symlink to (must exist)
         destination: Where to create the symlink
-        yes: Automatically approve without prompting (implies force=True for existing files)
-        force: If True, replace existing files/symlinks without prompting (creates backup if backup=True)
+        yes: Automatically approve without prompting (replaces existing files/directories)
         backup: If True and replacing existing file, create backup before replacing
         
     Returns:
@@ -224,7 +222,7 @@ def confirm_symlink(
     if path_exists(destination):
         if destination.is_symlink():
             # Different symlink, ask to replace it
-            if not yes and not force:
+            if not yes:
                 if not confirm(
                     yes=yes,
                     prompt=f"Symlink at {destination} points to {destination.resolve()}, "
@@ -232,8 +230,8 @@ def confirm_symlink(
                 ):
                     return False
             destination.unlink()
-        elif force or yes:
-            # Regular file/directory, replace if force=True or yes=True
+        elif yes:
+            # Regular file/directory, replace automatically if yes=True
             if backup and destination.is_file():
                 backup_path = destination.with_suffix(destination.suffix + ".bak")
                 shutil.copy(destination, backup_path)
@@ -269,8 +267,8 @@ def confirm_symlink(
                 else:
                     destination.unlink()
     
-    # Confirm creation if not forced and not yes
-    if not yes and not force and not path_exists(destination):
+    # Confirm creation if not yes and file doesn't exist
+    if not yes and not path_exists(destination):
         if not confirm(
             yes=yes,
             prompt=f"Create symlink from {destination} to {source}? [y/N]: ",

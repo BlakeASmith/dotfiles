@@ -25,7 +25,6 @@ def install_tmux(args: Namespace):
         source=source_config,
         destination=tmux_config,
         yes=args.yes,
-        force=args.force,
         backup=True,
     ):
         print("OK, aborting then :p")
@@ -83,11 +82,6 @@ def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
 
 @install_tmux.parser
 def tmux_parser(parser: ArgumentParser):
-    parser.add_argument(
-        "--force",
-        help="replace existing tmux config (creates backup)",
-        action="store_true",
-    )
     parser.add_argument(
         "--no-tpm",
         help="skip TPM installation",
