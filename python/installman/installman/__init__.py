@@ -200,9 +200,9 @@ def confirm_symlink(
     Args:
         source: The file/directory to symlink to (must exist)
         destination: Where to create the symlink
-        yes: Automatically approve without prompting
-        force: If True, replace existing files/symlinks (creates backup if backup=True)
-        backup: If True and force=True, create backup of existing file before replacing
+        yes: Automatically approve without prompting (implies force=True for existing files)
+        force: If True, replace existing files/symlinks without prompting (creates backup if backup=True)
+        backup: If True and replacing existing file, create backup before replacing
         
     Returns:
         True if symlink was created or already exists correctly, False if user declined
@@ -223,17 +223,17 @@ def confirm_symlink(
     # Handle existing file/directory
     if path_exists(destination):
         if destination.is_symlink():
-            # Different symlink, remove it
+            # Different symlink, ask to replace it
             if not yes and not force:
-                response = input(
-                    f"Symlink at {destination} points to {destination.resolve()}, "
-                    f"replace with {source}? [y/N]: "
-                ).strip().lower()
-                if not response.startswith("y"):
+                if not confirm(
+                    yes=yes,
+                    prompt=f"Symlink at {destination} points to {destination.resolve()}, "
+                    f"replace with {source}? [y/N]: ",
+                ):
                     return False
             destination.unlink()
-        elif force:
-            # Regular file/directory, replace if force=True
+        elif force or yes:
+            # Regular file/directory, replace if force=True or yes=True
             if backup and destination.is_file():
                 backup_path = destination.with_suffix(destination.suffix + ".bak")
                 shutil.copy(destination, backup_path)
@@ -248,15 +248,29 @@ def confirm_symlink(
                 else:
                     destination.unlink()
         else:
-            # Regular file/directory exists, need --force
-            print(
-                f"{destination} already exists. Use --force to replace it "
-                "(backup will be created if backup=True)"
-            )
-            return False
+            # Regular file/directory exists, ask to replace it
+            if not confirm(
+                yes=yes,
+                prompt=f"{destination} already exists. Replace it? [y/N]: ",
+            ):
+                return False
+            # User confirmed, proceed with replacement
+            if backup and destination.is_file():
+                backup_path = destination.with_suffix(destination.suffix + ".bak")
+                shutil.copy(destination, backup_path)
+                print(f"Backed up existing file to {backup_path}")
+            elif backup and destination.is_dir():
+                backup_path = destination.with_name(destination.name + ".bak")
+                shutil.copytree(destination, backup_path)
+                print(f"Backed up existing directory to {backup_path}")
+            if destination.is_file() or destination.is_dir():
+                if destination.is_dir():
+                    shutil.rmtree(destination)
+                else:
+                    destination.unlink()
     
-    # Confirm creation if not forced
-    if not yes and not force:
+    # Confirm creation if not forced and not yes
+    if not yes and not force and not path_exists(destination):
         if not confirm(
             yes=yes,
             prompt=f"Create symlink from {destination} to {source}? [y/N]: ",
