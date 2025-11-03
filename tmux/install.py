@@ -1,10 +1,8 @@
-import os
-import shutil
 import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from installman import confirm, confirm_dir, confirm_file, installer, path_exists
+from installman import confirm, confirm_dir, confirm_symlink, installer, path_exists
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -22,44 +20,16 @@ def install_tmux(args: Namespace):
     if not args.no_tpm:
         install_tpm(tpm_dir=TPM_DIR, yes=args.yes)
 
-    # Check if config already exists and handle it appropriately
-    # Use confirm_file to handle existence check - returns True if file exists or user confirms creation
-    # Set create=False to avoid creating empty file (we'll create symlink instead)
-    config_exists = confirm_file(tmux_config, yes=args.yes, follow_symlinks=False, create=False)
-    
-    if not config_exists:
-        # File doesn't exist, confirm if we should proceed
-        if not confirm(yes=args.yes, prompt=f"Create tmux config at {tmux_config}? [y/N]: "):
-            print("OK, aborting then :p")
-            return
-
-    # Handle existing config (symlink or regular file)
-    if tmux_config.is_symlink():
-        if tmux_config.resolve() == source_config:
-            print(f"tmux config is already symlinked correctly")
-            return
-        else:
-            print(f"Removing existing symlink pointing to {tmux_config.resolve()}")
-            tmux_config.unlink()
-    elif args.force and not tmux_config.is_symlink():
-        backup = HOME / ".tmux.conf.bak"
-        shutil.copy(tmux_config, backup)
-        print(f"Backed up existing config to {backup}")
-        tmux_config.unlink()
-    elif not tmux_config.is_symlink():
-        print(
-            f"tmux config already exists at {tmux_config}. "
-            "Use --force to replace it (backup will be created)"
-        )
+    # Use confirm_symlink helper to handle symlink creation
+    if not confirm_symlink(
+        source=source_config,
+        destination=tmux_config,
+        yes=args.yes,
+        force=args.force,
+        backup=True,
+    ):
+        print("OK, aborting then :p")
         return
-
-    # Create symlink (if confirm_file created an empty file, remove it first)
-    if tmux_config.is_file() and not tmux_config.is_symlink():
-        tmux_config.unlink()
-    
-    if not tmux_config.is_symlink():
-        tmux_config.symlink_to(source_config)
-        print(f"tmux config symlinked from {source_config} to {tmux_config}")
 
     # Install TPM plugins if TPM is installed
     if not args.no_tpm and path_exists(TPM_DIR):

@@ -187,41 +187,93 @@ def path_exists(path: Path, *, follow_symlinks: bool = True) -> bool:
     return path.exists(follow_symlinks=follow_symlinks)
 
 
-def confirm_file(
-    path: Path,
+def confirm_symlink(
+    source: Path,
+    destination: Path,
     *,
-    yes=False,
-    prompt=None,
-    follow_symlinks=True,
-    starter_content: str | None = None,
-    create: bool = True,
-):
-    """Confirm file exists or should be created.
+    yes: bool = False,
+    force: bool = False,
+    backup: bool = True,
+) -> bool:
+    """Confirm and create a symlink from source to destination.
     
     Args:
-        create: If True, create the file if it doesn't exist (default behavior).
-                If False, only check existence without creating.
+        source: The file/directory to symlink to (must exist)
+        destination: Where to create the symlink
+        yes: Automatically approve without prompting
+        force: If True, replace existing files/symlinks (creates backup if backup=True)
+        backup: If True and force=True, create backup of existing file before replacing
+        
+    Returns:
+        True if symlink was created or already exists correctly, False if user declined
     """
-    if path.exists(follow_symlinks=follow_symlinks):
+    # Check if source exists
+    if not source.exists():
+        raise FileNotFoundError(f"Source path does not exist: {source}")
+    
+    # Check if symlink already exists and points to correct target
+    if destination.is_symlink():
+        try:
+            if destination.resolve() == source.resolve():
+                return True
+        except (OSError, RuntimeError):
+            # Symlink is broken, we'll replace it
+            pass
+    
+    # Handle existing file/directory
+    if path_exists(destination):
+        if destination.is_symlink():
+            # Different symlink, remove it
+            if not yes and not force:
+                response = input(
+                    f"Symlink at {destination} points to {destination.resolve()}, "
+                    f"replace with {source}? [y/N]: "
+                ).strip().lower()
+                if not response.startswith("y"):
+                    return False
+            destination.unlink()
+        elif force:
+            # Regular file/directory, replace if force=True
+            if backup and destination.is_file():
+                backup_path = destination.with_suffix(destination.suffix + ".bak")
+                shutil.copy(destination, backup_path)
+                print(f"Backed up existing file to {backup_path}")
+            elif backup and destination.is_dir():
+                backup_path = destination.with_name(destination.name + ".bak")
+                shutil.copytree(destination, backup_path)
+                print(f"Backed up existing directory to {backup_path}")
+            if destination.is_file() or destination.is_dir():
+                if destination.is_dir():
+                    shutil.rmtree(destination)
+                else:
+                    destination.unlink()
+        else:
+            # Regular file/directory exists, need --force
+            print(
+                f"{destination} already exists. Use --force to replace it "
+                "(backup will be created if backup=True)"
+            )
+            return False
+    
+    # Confirm creation if not forced
+    if not yes and not force:
+        if not confirm(
+            yes=yes,
+            prompt=f"Create symlink from {destination} to {source}? [y/N]: ",
+        ):
+            return False
+    
+    # Ensure parent directory exists
+    confirm_dir(destination.parent, yes=yes)
+    
+    # Create the symlink
+    try:
+        destination.symlink_to(source)
+        print(f"Symlinked {destination} -> {source}")
         return True
-
-    if not create:
+    except OSError as e:
+        print(f"Failed to create symlink: {e}")
         return False
-
-    # Safety check: don't create a file if path is a directory
-    if path.is_dir():
-        raise ValueError(f"Cannot create file at {path}: path is a directory")
-
-    if prompt is None:
-        prompt = f"{path} does not exist, should we create it now? (y/N): "
-
-    if confirm(yes=yes, prompt=prompt):
-        path.touch()
-        if starter_content is not None:
-            path.write_text(starter_content)
-        return True
-
-    return False
 
 
 type Change = SingleFileChange
