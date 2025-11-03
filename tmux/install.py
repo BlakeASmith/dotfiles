@@ -22,52 +22,51 @@ def install_tmux(args: Namespace):
     if not args.no_tpm:
         install_tpm(tpm_dir=TPM_DIR, yes=args.yes)
 
-    # Handle existing config
-    if tmux_config.exists():
-        if tmux_config.is_symlink():
-            if tmux_config.resolve() == source_config:
-                print(f"tmux config is already symlinked correctly")
-                return
-            else:
-                print(f"Removing existing symlink pointing to {tmux_config.resolve()}")
-                tmux_config.unlink()
-        elif args.force:
-            backup = HOME / ".tmux.conf.bak"
-            shutil.copy(tmux_config, backup)
-            print(f"Backed up existing config to {backup}")
-            tmux_config.unlink()
-        else:
-            print(
-                f"tmux config already exists at {tmux_config}. "
-                "Use --force to replace it (backup will be created)"
-            )
-            return
-
-    # Confirm we want to proceed with creating the config file
-    # Note: confirm_file may create an empty file, which we'll replace with a symlink
-    file_existed_before = tmux_config.exists()
-    if not confirm_file(tmux_config, yes=args.yes):
+    # Check if config already exists and handle it appropriately
+    # Use confirm_file to handle existence check - it returns True if file exists or was created
+    config_exists = confirm_file(tmux_config, yes=args.yes, follow_symlinks=False)
+    
+    if not config_exists:
         print("OK, aborting then :p")
         return
 
-    # If confirm_file created an empty file, remove it so we can create a symlink
-    if not file_existed_before and tmux_config.exists() and not tmux_config.is_symlink():
+    # Handle existing config (symlink or regular file)
+    if tmux_config.is_symlink():
+        if tmux_config.resolve() == source_config:
+            print(f"tmux config is already symlinked correctly")
+            return
+        else:
+            print(f"Removing existing symlink pointing to {tmux_config.resolve()}")
+            tmux_config.unlink()
+    elif args.force and not tmux_config.is_symlink():
+        backup = HOME / ".tmux.conf.bak"
+        shutil.copy(tmux_config, backup)
+        print(f"Backed up existing config to {backup}")
         tmux_config.unlink()
+    elif not tmux_config.is_symlink():
+        print(
+            f"tmux config already exists at {tmux_config}. "
+            "Use --force to replace it (backup will be created)"
+        )
+        return
 
-    # Create symlink
-    if not tmux_config.exists():
+    # Create symlink (if confirm_file created an empty file, remove it first)
+    if tmux_config.is_file() and not tmux_config.is_symlink():
+        tmux_config.unlink()
+    
+    if not tmux_config.is_symlink():
         tmux_config.symlink_to(source_config)
         print(f"tmux config symlinked from {source_config} to {tmux_config}")
 
     # Install TPM plugins if TPM is installed
-    if not args.no_tpm and TPM_DIR.exists():
+    if not args.no_tpm and TPM_DIR.is_dir():
         if not args.no_plugins:
             print("\nInstalling tmux plugins...")
             print("You may need to press 'prefix + I' in tmux to install plugins manually")
             print("Or run: ~/.tmux/plugins/tpm/bin/install_plugins")
             # Try to install plugins automatically
             install_plugins_path = TPM_DIR / "bin" / "install_plugins"
-            if install_plugins_path.exists():
+            if install_plugins_path.is_file():
                 try:
                     subprocess.run([str(install_plugins_path)], check=False)
                 except Exception as e:
@@ -77,7 +76,8 @@ def install_tmux(args: Namespace):
 
 def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
     """Install TPM (Tmux Plugin Manager) if not already installed."""
-    if tpm_dir.exists():
+    # Check if TPM is already installed (check if directory exists)
+    if tpm_dir.is_dir():
         print(f"TPM already installed at {tpm_dir}")
         return
 
@@ -89,6 +89,7 @@ def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
         return
 
     print(f"Installing TPM to {tpm_dir}...")
+    # Ensure parent directory exists
     confirm_dir(tpm_dir.parent, yes=yes)
 
     try:
