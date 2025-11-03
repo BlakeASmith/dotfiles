@@ -182,6 +182,11 @@ def confirm_dir(
     return False
 
 
+def path_exists(path: Path, *, follow_symlinks: bool = True) -> bool:
+    """Check if a path exists without creating it."""
+    return path.exists(follow_symlinks=follow_symlinks)
+
+
 def confirm_file(
     path: Path,
     *,
@@ -189,10 +194,23 @@ def confirm_file(
     prompt=None,
     follow_symlinks=True,
     starter_content: str | None = None,
+    create: bool = True,
 ):
-    assert not path.is_dir()
+    """Confirm file exists or should be created.
+    
+    Args:
+        create: If True, create the file if it doesn't exist (default behavior).
+                If False, only check existence without creating.
+    """
     if path.exists(follow_symlinks=follow_symlinks):
         return True
+
+    if not create:
+        return False
+
+    # Safety check: don't create a file if path is a directory
+    if path.is_dir():
+        raise ValueError(f"Cannot create file at {path}: path is a directory")
 
     if prompt is None:
         prompt = f"{path} does not exist, should we create it now? (y/N): "

@@ -4,7 +4,7 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from installman import confirm, confirm_dir, confirm_file, installer
+from installman import confirm, confirm_dir, confirm_file, installer, path_exists
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -23,12 +23,15 @@ def install_tmux(args: Namespace):
         install_tpm(tpm_dir=TPM_DIR, yes=args.yes)
 
     # Check if config already exists and handle it appropriately
-    # Use confirm_file to handle existence check - it returns True if file exists or was created
-    config_exists = confirm_file(tmux_config, yes=args.yes, follow_symlinks=False)
+    # Use confirm_file to handle existence check - returns True if file exists or user confirms creation
+    # Set create=False to avoid creating empty file (we'll create symlink instead)
+    config_exists = confirm_file(tmux_config, yes=args.yes, follow_symlinks=False, create=False)
     
     if not config_exists:
-        print("OK, aborting then :p")
-        return
+        # File doesn't exist, confirm if we should proceed
+        if not confirm(yes=args.yes, prompt=f"Create tmux config at {tmux_config}? [y/N]: "):
+            print("OK, aborting then :p")
+            return
 
     # Handle existing config (symlink or regular file)
     if tmux_config.is_symlink():
@@ -59,14 +62,14 @@ def install_tmux(args: Namespace):
         print(f"tmux config symlinked from {source_config} to {tmux_config}")
 
     # Install TPM plugins if TPM is installed
-    if not args.no_tpm and TPM_DIR.is_dir():
+    if not args.no_tpm and path_exists(TPM_DIR):
         if not args.no_plugins:
             print("\nInstalling tmux plugins...")
             print("You may need to press 'prefix + I' in tmux to install plugins manually")
             print("Or run: ~/.tmux/plugins/tpm/bin/install_plugins")
             # Try to install plugins automatically
             install_plugins_path = TPM_DIR / "bin" / "install_plugins"
-            if install_plugins_path.is_file():
+            if path_exists(install_plugins_path):
                 try:
                     subprocess.run([str(install_plugins_path)], check=False)
                 except Exception as e:
@@ -76,8 +79,8 @@ def install_tmux(args: Namespace):
 
 def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
     """Install TPM (Tmux Plugin Manager) if not already installed."""
-    # Check if TPM is already installed (check if directory exists)
-    if tpm_dir.is_dir():
+    # Check if TPM is already installed using path_exists helper
+    if path_exists(tpm_dir):
         print(f"TPM already installed at {tpm_dir}")
         return
 
