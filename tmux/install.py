@@ -4,7 +4,7 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from installman import installer
+from installman import confirm, confirm_dir, installer
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -69,14 +69,15 @@ def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
         print(f"TPM already installed at {tpm_dir}")
         return
 
-    if not yes:
-        response = input(f"Install TPM to {tpm_dir}? [y/N]: ")
-        if response.lower() not in ["y", "yes"]:
-            print("Skipping TPM installation")
-            return
+    if not confirm(
+        yes=yes,
+        prompt=f"Install TPM to {tpm_dir}? [y/N]: ",
+    ):
+        print("Skipping TPM installation")
+        return
 
     print(f"Installing TPM to {tpm_dir}...")
-    tpm_dir.parent.mkdir(parents=True, exist_ok=True)
+    confirm_dir(tpm_dir.parent, yes=yes)
 
     try:
         subprocess.run(
