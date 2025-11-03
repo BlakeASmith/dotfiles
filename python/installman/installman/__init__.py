@@ -7,6 +7,7 @@ import difflib
 import importlib.util
 import os
 import shutil
+import subprocess
 import sys
 
 # pyright: reportPrivateUsage=false
@@ -182,28 +183,157 @@ def confirm_dir(
     return False
 
 
-def confirm_file(
-    path: Path,
+def confirm_brewed(
+    package: str,
     *,
-    yes=False,
-    prompt=None,
-    follow_symlinks=True,
-    starter_content: str | None = None,
-):
-    assert not path.is_dir()
-    if path.exists(follow_symlinks=follow_symlinks):
+    yes: bool = False,
+) -> str | None:
+    """Confirm and install a package via Homebrew if not already on PATH.
+    
+    Args:
+        package: The package name to install (e.g., 'tmux', 'git')
+        yes: Automatically approve installation without prompting
+        
+    Returns:
+        Path to the installed package executable, or None if declined/not found
+    """
+    # Check if package already exists on PATH
+    package_path = dependency(package)
+    if package_path:
+        return package_path
+    
+    # Check if brew is available
+    brew_path = dependency("brew")
+    if not brew_path:
+        print(f"brew not found. Cannot install {package}.")
+        print("Please install Homebrew first: https://brew.sh/")
+        return None
+    
+    # Prompt for installation
+    if not confirm(
+        yes=yes,
+        prompt=f"{package} not found on PATH. Install via Homebrew? [y/N]: ",
+    ):
+        print(f"Skipping {package} installation")
+        return None
+    
+    # Install via brew
+    print(f"Installing {package} via Homebrew...")
+    
+    try:
+        subprocess.run(
+            [brew_path, "install", package],
+            check=True,
+        )
+        print(f"{package} installed successfully")
+        
+        # Get the path to the newly installed package
+        installed_path = dependency(package)
+        return installed_path
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install {package}: {e}")
+        return None
+
+
+def confirm_symlink(
+    source: Path,
+    destination: Path,
+    *,
+    yes: bool = False,
+    backup: bool = True,
+) -> bool:
+    """Confirm and create a symlink from source to destination.
+    
+    Args:
+        source: The file/directory to symlink to (must exist)
+        destination: Where to create the symlink
+        yes: Automatically approve without prompting (replaces existing files/directories)
+        backup: If True and replacing existing file, create backup before replacing
+        
+    Returns:
+        True if symlink was created or already exists correctly, False if user declined
+    """
+    # Check if source exists
+    if not source.exists():
+        raise FileNotFoundError(f"Source path does not exist: {source}")
+    
+    # Check if symlink already exists and points to correct target
+    if destination.is_symlink():
+        try:
+            if destination.resolve() == source.resolve():
+                return True
+        except (OSError, RuntimeError):
+            # Symlink is broken, we'll replace it
+            pass
+    
+    # Handle existing file/directory
+    if path_exists(destination):
+        if destination.is_symlink():
+            # Different symlink, ask to replace it
+            if not yes:
+                if not confirm(
+                    yes=yes,
+                    prompt=f"Symlink at {destination} points to {destination.resolve()}, "
+                    f"replace with {source}? [y/N]: ",
+                ):
+                    return False
+            destination.unlink()
+        elif yes:
+            # Regular file/directory, replace automatically if yes=True
+            if backup and destination.is_file():
+                backup_path = destination.with_suffix(destination.suffix + ".bak")
+                shutil.copy(destination, backup_path)
+                print(f"Backed up existing file to {backup_path}")
+            elif backup and destination.is_dir():
+                backup_path = destination.with_name(destination.name + ".bak")
+                shutil.copytree(destination, backup_path)
+                print(f"Backed up existing directory to {backup_path}")
+            if destination.is_file() or destination.is_dir():
+                if destination.is_dir():
+                    shutil.rmtree(destination)
+                else:
+                    destination.unlink()
+        else:
+            # Regular file/directory exists, ask to replace it
+            if not confirm(
+                yes=yes,
+                prompt=f"{destination} already exists. Replace it? [y/N]: ",
+            ):
+                return False
+            # User confirmed, proceed with replacement
+            if backup and destination.is_file():
+                backup_path = destination.with_suffix(destination.suffix + ".bak")
+                shutil.copy(destination, backup_path)
+                print(f"Backed up existing file to {backup_path}")
+            elif backup and destination.is_dir():
+                backup_path = destination.with_name(destination.name + ".bak")
+                shutil.copytree(destination, backup_path)
+                print(f"Backed up existing directory to {backup_path}")
+            if destination.is_file() or destination.is_dir():
+                if destination.is_dir():
+                    shutil.rmtree(destination)
+                else:
+                    destination.unlink()
+    
+    # Confirm creation if not yes and file doesn't exist
+    if not yes and not path_exists(destination):
+        if not confirm(
+            yes=yes,
+            prompt=f"Create symlink from {destination} to {source}? [y/N]: ",
+        ):
+            return False
+    
+    # Ensure parent directory exists
+    confirm_dir(destination.parent, yes=yes)
+    
+    # Create the symlink
+    try:
+        destination.symlink_to(source)
+        print(f"Symlinked {destination} -> {source}")
         return True
-
-    if prompt is None:
-        prompt = f"{path} does not exist, should we create it now? (y/N): "
-
-    if confirm(yes=yes, prompt=prompt):
-        path.touch()
-        if starter_content is not None:
-            path.write_text(starter_content)
-        return True
-
-    return False
+    except OSError as e:
+        print(f"Failed to create symlink: {e}")
+        return False
 
 
 type Change = SingleFileChange
