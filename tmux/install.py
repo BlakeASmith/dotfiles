@@ -4,7 +4,7 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from installman import confirm, confirm_dir, installer
+from installman import confirm, confirm_dir, confirm_file, installer
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -43,9 +43,21 @@ def install_tmux(args: Namespace):
             )
             return
 
+    # Confirm we want to proceed with creating the config file
+    # Note: confirm_file may create an empty file, which we'll replace with a symlink
+    file_existed_before = tmux_config.exists()
+    if not confirm_file(tmux_config, yes=args.yes):
+        print("OK, aborting then :p")
+        return
+
+    # If confirm_file created an empty file, remove it so we can create a symlink
+    if not file_existed_before and tmux_config.exists() and not tmux_config.is_symlink():
+        tmux_config.unlink()
+
     # Create symlink
-    tmux_config.symlink_to(source_config)
-    print(f"tmux config symlinked from {source_config} to {tmux_config}")
+    if not tmux_config.exists():
+        tmux_config.symlink_to(source_config)
+        print(f"tmux config symlinked from {source_config} to {tmux_config}")
 
     # Install TPM plugins if TPM is installed
     if not args.no_tpm and TPM_DIR.exists():
