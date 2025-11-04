@@ -15,7 +15,7 @@ def ensure_module_installed() -> None:
         import fencing
     except ModuleNotFoundError:
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", str(HERE / "python/fenching")]
+            [sys.executable, "-m", "pip", "install", str(HERE / "python/fencing")]
         )
 
     try:

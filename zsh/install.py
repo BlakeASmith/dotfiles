@@ -60,7 +60,7 @@ def install_zsh(args: Namespace):
     else:
         _configs = {args.config: configs[args.config]}
 
-    for conf in configs.values():
+    for conf in _configs.values():
         before, after, changed = copy_block(
             fence=conf["fence"],  # pyright: ignore
             source=conf["source"],  # pyright: ignore
