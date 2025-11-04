@@ -17,7 +17,6 @@ import sys
 # pyright: reportMissingParameterType=false
 from argparse import ArgumentParser, Namespace, _SubParsersAction
 from pathlib import Path
-from tracemalloc import start
 from typing import Any, Callable, final
 
 type Subparsers = _SubParsersAction[ArgumentParser]
@@ -92,7 +91,7 @@ def symlink_rec(source: Path, destination: Path, quiet: bool = False):
             dest.parent.mkdir(parents=True, exist_ok=True)
             try:
                 dest.symlink_to(item)
-            except:
+            except OSError:
                 if not quiet:
                     print(
                         f"- failed to symlink {item} to {dest} (probably already exists)"
@@ -108,14 +107,19 @@ def dependency(str):
     return shutil.which(str)
 
 
+def path_exists(path: Path) -> bool:
+    """Check if a path exists (helper function for compatibility)."""
+    return path.exists()
+
+
 @final
 class SingleFileChange:
     def __init__(self, before: str | None, after: str, path: Path) -> None:
-        if self.before is None:
-            self.before = ""
+        if before is None:
+            before = ""
         # assuming there is some content
         # not handling the case there isn't, so better to fail loudly
-        assert self.after
+        assert after
         self.before = before
         self.after = after
         self.path = path
@@ -267,7 +271,7 @@ def confirm_symlink(
             pass
     
     # Handle existing file/directory
-    if path_exists(destination):
+    if destination.exists():
         if destination.is_symlink():
             # Different symlink, ask to replace it
             if not yes:
@@ -316,7 +320,7 @@ def confirm_symlink(
                     destination.unlink()
     
     # Confirm creation if not yes and file doesn't exist
-    if not yes and not path_exists(destination):
+    if not yes and not destination.exists():
         if not confirm(
             yes=yes,
             prompt=f"Create symlink from {destination} to {source}? [y/N]: ",

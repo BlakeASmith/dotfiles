@@ -51,7 +51,7 @@ class CodeFence:
         return re.compile(self.end)
 
     @property
-    def is_symettric(self):
+    def is_symmetric(self):
         return self.start == self.end
 
     @lru_cache
@@ -66,7 +66,7 @@ class CodeFence:
     def _find_starts(self, content: str):
         matches = self._find_matches(self.start_pattern, content)
 
-        if self.is_symettric:
+        if self.is_symmetric:
             # if start and end are the same, the starts the first match, then every second match
             return matches[::2]
 
@@ -75,10 +75,10 @@ class CodeFence:
 
     def _find_ends(self, content: str):
         matches = self._find_matches(self.end_pattern, content)
-        if self.is_symettric:
+        if self.is_symmetric:
             # if start and end are the same, the ends are every second match (skipping the first)
             return matches[1::2]
-        return self.start_pattern.finditer(content)
+        return matches
 
     def find_blocks(self, content: str, source_path: Path | None = None):
         starts = self._find_starts(content)
