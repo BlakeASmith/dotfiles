@@ -10,6 +10,9 @@ return {
 		},
 		opts = {
 			ensure_installed = {
+				"basedpyright",
+				"lua_ls",
+				"jdtls",
 				"marksman",
 			},
 		},
