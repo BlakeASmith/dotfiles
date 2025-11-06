@@ -1,18 +1,17 @@
 -- keymap to get to keymaps
-local quickkeymap = function()
-	vim.cmd("sp | e ~/.config/nvim/lua/user/keymaps.lua")
-	vim.cmd("res 25")
+local quick_action = require("plugins.quick-action")
 
-	vim.keymap.set("n", "q", function()
-		-- source it
+local quickkeymap = quick_action.open({
+	file = "~/.config/nvim/lua/user/keymaps.lua",
+	height = 25,
+	close_key = "q",
+	on_close = function()
 		vim.cmd("update | source %")
-		-- kill it
-		vim.cmd("bdelete")
-	end, { buffer = true, desc = "Delete current buffer" })
-
-	-- I probably want to go to the end
-	vim.cmd("norm G")
-end
+	end,
+	on_open = function()
+		vim.cmd("norm G")
+	end,
+})
 
 vim.keymap.set({ "n" }, "<leader>km", quickkeymap, { desc = "open keybindings config" })
 
