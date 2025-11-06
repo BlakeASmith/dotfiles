@@ -27,6 +27,10 @@ local daily_note_quick = function()
 end
 vim.keymap.set("n", "<leader>nd", daily_note_quick, { desc = "Open daily note in quick window" })
 
+-- Daily note navigation
+vim.keymap.set("n", "<leader>nn", daily_note.next_daily_note, { desc = "Next daily note" })
+vim.keymap.set("n", "<leader>np", daily_note.prev_daily_note, { desc = "Previous daily note" })
+
 -- general re-binds
 vim.keymap.set({ "n", "v" }, ";", ":", { desc = "classic" })
 
