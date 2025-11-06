@@ -1,0 +1,22 @@
+# .marksman.toml
+# Place this file in the root directory of your notes vault (e.g., ~/vault/.marksman.toml)
+#
+# Configuration for marksman LSP to handle Obsidian-style [[wikilinks]]
+#
+# File-stem resolution: [[My Note]] maps to My Note.md
+
+[core]
+# Resolve wikilinks using file-stem style (e.g., [[My Note]] -> My Note.md)
+# This is the default behavior, but explicitly set for clarity
+link.kind = "file-stem"
+link.extension = ".md"
+
+# File search configuration
+[core.search]
+# Search files relative to the project root
+follow_symlinks = false
+
+# Wiki link configuration  
+[core.wiki]
+# Enable wiki link support (enabled by default)
+enabled = true

@@ -1,5 +1,6 @@
 -- keymap to get to keymaps
 local quick_action = require("utils.quick-action")
+local daily_note = require("user.daily-note")
 
 local quickkeymap = quick_action.open({
 	file = "~/.config/nvim/lua/user/keymaps.lua",
@@ -15,6 +16,13 @@ local quickkeymap = quick_action.open({
 vim.keymap.set({ "n" }, "<leader>km", quickkeymap, { desc = "open keybindings config" })
 
 vim.keymap.set("n", "<leader>kb", quickkeymap, { desc = "Edit keymaps" })
+
+-- Daily note quick open
+vim.keymap.set("n", "<leader>nd", daily_note.open_daily_note_quick, { desc = "Open daily note in quick window" })
+
+-- Daily note navigation
+vim.keymap.set("n", "<leader>nn", daily_note.next_daily_note, { desc = "Next daily note" })
+vim.keymap.set("n", "<leader>np", daily_note.prev_daily_note, { desc = "Previous daily note" })
 
 -- general re-binds
 vim.keymap.set({ "n", "v" }, ";", ":", { desc = "classic" })
