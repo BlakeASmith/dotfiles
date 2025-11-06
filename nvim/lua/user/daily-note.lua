@@ -126,9 +126,31 @@ local function today_note()
 	vim.cmd("edit " .. vim.fn.fnameescape(filepath))
 end
 
--- Create the user command
+-- Open daily note in quick window
+function M.open_daily_note_quick()
+	local quick_action = require("utils.quick-action")
+	local filepath = M.get_daily_note_path()
+	quick_action.open({
+		file = filepath,
+		height = 25,
+	})()
+end
+
+-- Create user commands
 vim.api.nvim_create_user_command("Today", today_note, {
 	desc = "Open or create today's daily note file",
+})
+
+vim.api.nvim_create_user_command("DailyNext", M.next_daily_note, {
+	desc = "Navigate to next daily note",
+})
+
+vim.api.nvim_create_user_command("DailyPrev", M.prev_daily_note, {
+	desc = "Navigate to previous daily note",
+})
+
+vim.api.nvim_create_user_command("DailyQuick", M.open_daily_note_quick, {
+	desc = "Open today's daily note in quick window",
 })
 
 return M

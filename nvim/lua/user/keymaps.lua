@@ -18,14 +18,7 @@ vim.keymap.set({ "n" }, "<leader>km", quickkeymap, { desc = "open keybindings co
 vim.keymap.set("n", "<leader>kb", quickkeymap, { desc = "Edit keymaps" })
 
 -- Daily note quick open
-local daily_note_quick = function()
-	local filepath = daily_note.get_daily_note_path()
-	quick_action.open({
-		file = filepath,
-		height = 25,
-	})()
-end
-vim.keymap.set("n", "<leader>nd", daily_note_quick, { desc = "Open daily note in quick window" })
+vim.keymap.set("n", "<leader>nd", daily_note.open_daily_note_quick, { desc = "Open daily note in quick window" })
 
 -- Daily note navigation
 vim.keymap.set("n", "<leader>nn", daily_note.next_daily_note, { desc = "Next daily note" })
