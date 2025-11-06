@@ -142,24 +142,15 @@ function M.open_popup(opts)
 		end, { buffer = buf, desc = "Close quick action popup" })
 
 		-- Set up double ESC to close
-		local last_esc_time = 0
-		vim.keymap.set("n", "<Esc>", function()
-			local current_time = vim.fn.reltimefloat(vim.fn.reltime()) * 1000 -- Convert to milliseconds
-			if current_time - last_esc_time < 500 then
-				-- Double ESC detected
-				if on_close then
-					if type(on_close) == "string" then
-						vim.cmd(on_close)
-					elseif type(on_close) == "function" then
-						on_close()
-					end
+		vim.keymap.set("n", "<Esc><Esc>", function()
+			if on_close then
+				if type(on_close) == "string" then
+					vim.cmd(on_close)
+				elseif type(on_close) == "function" then
+					on_close()
 				end
-				vim.api.nvim_win_close(win, true)
-				last_esc_time = 0 -- Reset after closing
-			else
-				-- Single ESC - just record the time
-				last_esc_time = current_time
 			end
+			vim.api.nvim_win_close(win, true)
 		end, { buffer = buf, desc = "Close quick action popup (double ESC)" })
 
 		-- Run on_open callback if provided
