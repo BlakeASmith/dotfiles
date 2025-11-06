@@ -1,7 +1,7 @@
 -- Quick action utility for opening files in splits with custom actions
 --
 -- Usage:
---   local quick_action = require("user.quick-action")
+--   local quick_action = require("utils.quick-action")
 --   vim.keymap.set("n", "<leader>km", quick_action.open({
 --     file = "~/.config/nvim/lua/user/keymaps.lua",
 --     height = 25,
