@@ -1,7 +1,6 @@
 return {
 	{
-		-- "BlakeASmith/tfling.nvim",
-		dir = "~/w/tfling.nvim",
+		"BlakeASmith/tfling.nvim",
 		config = function()
 			local tfling = require("tfling")
 
@@ -28,8 +27,8 @@ return {
 			vim.keymap.set({ "n", "v" }, "<leader>ai", function()
 				tfling.term({
 					cmd = "cursor-agent",
-					-- abduco = true,
-					tmux = true,
+					abduco = false,
+					tmux = false,
 					send_delay = 700,
 					setup = function(term)
 						local selected = term.selected_text
@@ -44,8 +43,8 @@ return {
 				tfling.term({
 					name = "cursor-agent-top",
 					cmd = "cursor-agent",
-					-- tmux = true,
-					abduco = true,
+					tmux = false,
+					abduco = false,
 					send_delay = 700,
 					win = {
 						type = "floating",
@@ -67,8 +66,8 @@ return {
 				tfling.term({
 					name = "LazyGit",
 					cmd = "lazygit",
-					-- tmux = true,
-					abduco = true,
+					tmux = false,
+					abduco = false,
 					win = {
 						type = "floating",
 						height = "100%",
@@ -83,7 +82,7 @@ return {
 				tfling.term({
 					name = "shell",
 					cmd = "zsh",
-					tmux = true,
+					tmux = false,
 					send_delay = 1000,
 					win = {
 						type = "floating",
@@ -107,7 +106,7 @@ return {
 				tfling.term({
 					name = "ranger",
 					cmd = "ranger",
-					tmux = true,
+					tmux = false,
 					send_delay = 1000,
 					win = {
 						type = "floating",
@@ -126,7 +125,7 @@ return {
 				tfling.term({
 					cmd = "opencode",
 					send_delay = 700,
-					tmux = true,
+					tmux = false,
 					win = {
 						type = "split",
 						direction = "right",
