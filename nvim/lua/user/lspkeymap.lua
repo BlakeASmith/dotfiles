@@ -4,6 +4,7 @@ vim.lsp.enable("basedpyright")
 vim.lsp.enable("lua-ls")
 vim.lsp.enable("jdtls")
 vim.lsp.enable("marksman")
+vim.lsp.enable("typescript-language-server")
 
 -- Some default mappings, but listing here so I remember
 -- ]d next diagnostic
