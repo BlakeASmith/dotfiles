@@ -2,7 +2,10 @@
 -- Creates a user command :Today that opens or creates a daily note file
 -- File path: ~/vault/daily/YYYY-MM-DD.md (configurable)
 
-local function today_note()
+local M = {}
+
+-- Get the daily note file path
+function M.get_daily_note_path()
 	-- Configuration: Set your vault directory here
 	local vault_dir = vim.fn.expand("~/vault")
 	local daily_dir = vim.fn.expand(vault_dir .. "/daily")
@@ -17,6 +20,11 @@ local function today_note()
 	local filename = date .. ".md"
 	local filepath = daily_dir .. "/" .. filename
 
+	return filepath
+end
+
+local function today_note()
+	local filepath = M.get_daily_note_path()
 	-- Open or create the file
 	vim.cmd("edit " .. vim.fn.fnameescape(filepath))
 end
@@ -25,3 +33,5 @@ end
 vim.api.nvim_create_user_command("Today", today_note, {
 	desc = "Open or create today's daily note file",
 })
+
+return M
