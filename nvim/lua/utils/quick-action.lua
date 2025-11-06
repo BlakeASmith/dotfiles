@@ -141,11 +141,6 @@ function M.open_popup(opts)
 			vim.api.nvim_win_close(win, true)
 		end, { buffer = buf, desc = "Close quick action popup" })
 
-		-- Also allow ESC to close
-		vim.keymap.set("n", "<Esc>", function()
-			vim.api.nvim_win_close(win, true)
-		end, { buffer = buf, desc = "Close quick action popup" })
-
 		-- Run on_open callback if provided
 		if on_open then
 			if type(on_open) == "string" then
