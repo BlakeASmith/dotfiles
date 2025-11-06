@@ -36,8 +36,8 @@ local M = {}
 --- @param opts.file string Path to the file to open
 --- @param opts.height? number Height of the split window (default: 25)
 --- @param opts.close_key? string Key to close the buffer (default: "q")
---- @param opts.on_close? function|string Function or command to run on close
---- @param opts.on_open? function|string Function or command to run after opening
+--- @param opts.on_close? function Function to run on close
+--- @param opts.on_open? function Function to run after opening
 --- @return function Function that can be used as a keymap handler
 function M.open(opts)
 	local file = opts.file
@@ -54,22 +54,14 @@ function M.open(opts)
 		-- Set up close keymap
 		vim.keymap.set("n", close_key, function()
 			if on_close then
-				if type(on_close) == "string" then
-					vim.cmd(on_close)
-				elseif type(on_close) == "function" then
-					on_close()
-				end
+				on_close()
 			end
 			vim.cmd("bdelete")
 		end, { buffer = true, desc = "Close quick action buffer" })
 
 		-- Run on_open callback if provided
 		if on_open then
-			if type(on_open) == "string" then
-				vim.cmd(on_open)
-			elseif type(on_open) == "function" then
-				on_open()
-			end
+			on_open()
 		end
 	end
 end
@@ -80,8 +72,8 @@ end
 --- @param opts.width? number Width of the popup window (default: 80)
 --- @param opts.height? number Height of the popup window (default: 25)
 --- @param opts.close_key? string Key to close the buffer (default: "q")
---- @param opts.on_close? function|string Function or command to run on close
---- @param opts.on_open? function|string Function or command to run after opening
+--- @param opts.on_close? function Function to run on close
+--- @param opts.on_open? function Function to run after opening
 --- @param opts.relative? string Window relative positioning (default: "editor")
 --- @param opts.row? number Row position (default: centered)
 --- @param opts.col? number Column position (default: centered)
@@ -132,11 +124,7 @@ function M.open_popup(opts)
 		-- Set up close keymap
 		vim.keymap.set("n", close_key, function()
 			if on_close then
-				if type(on_close) == "string" then
-					vim.cmd(on_close)
-				elseif type(on_close) == "function" then
-					on_close()
-				end
+				on_close()
 			end
 			vim.api.nvim_win_close(win, true)
 		end, { buffer = buf, desc = "Close quick action popup" })
@@ -144,22 +132,14 @@ function M.open_popup(opts)
 		-- Set up double ESC to close
 		vim.keymap.set("n", "<Esc><Esc>", function()
 			if on_close then
-				if type(on_close) == "string" then
-					vim.cmd(on_close)
-				elseif type(on_close) == "function" then
-					on_close()
-				end
+				on_close()
 			end
 			vim.api.nvim_win_close(win, true)
 		end, { buffer = buf, desc = "Close quick action popup (double ESC)" })
 
 		-- Run on_open callback if provided
 		if on_open then
-			if type(on_open) == "string" then
-				vim.cmd(on_open)
-			elseif type(on_open) == "function" then
-				on_open()
-			end
+			on_open()
 		end
 	end
 end
