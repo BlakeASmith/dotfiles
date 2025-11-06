@@ -13,6 +13,7 @@ end
 require("user.lspkeymap")
 require("user.format")
 require("user.fuzzy")
+require("user.daily-note")
 
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
