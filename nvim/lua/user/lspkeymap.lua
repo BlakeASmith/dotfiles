@@ -3,8 +3,7 @@
 vim.lsp.enable("basedpyright")
 vim.lsp.enable("lua-ls")
 vim.lsp.enable("jdtls")
--- marksman is now configured via nvim-lspconfig in plugins/lspconfig.lua
--- vim.lsp.enable("marksman")
+vim.lsp.enable("marksman")
 vim.lsp.enable("typescript-language-server")
 
 -- Some default mappings, but listing here so I remember
