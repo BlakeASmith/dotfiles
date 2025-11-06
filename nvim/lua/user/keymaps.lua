@@ -1,5 +1,5 @@
 -- keymap to get to keymaps
-local quick_action = require("plugins.quick-action")
+local quick_action = require("user.quick-action")
 
 local quickkeymap = quick_action.open({
 	file = "~/.config/nvim/lua/user/keymaps.lua",
