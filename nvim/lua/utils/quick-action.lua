@@ -6,7 +6,6 @@
 --   vim.keymap.set("n", "<leader>km", quick_action.open({
 --     file = "~/.config/nvim/lua/user/keymaps.lua",
 --     height = 25,
---     close_key = "q",
 --     on_close = function()
 --       vim.cmd("update | source %")
 --     end,
@@ -20,7 +19,6 @@
 --     file = "~/.config/nvim/lua/user/keymaps.lua",
 --     width = 80,
 --     height = 25,
---     close_key = "q",
 --     on_close = function()
 --       vim.cmd("update | source %")
 --     end,
@@ -35,14 +33,12 @@ local M = {}
 --- @param opts table Configuration options
 --- @param opts.file string Path to the file to open
 --- @param opts.height? number Height of the split window (default: 25)
---- @param opts.close_key? string Key to close the buffer (default: "q")
 --- @param opts.on_close? function Function to run on close
 --- @param opts.on_open? function Function to run after opening
 --- @return function Function that can be used as a keymap handler
 function M.open(opts)
 	local file = opts.file
 	local height = opts.height or 25
-	local close_key = opts.close_key or "q"
 	local on_close = opts.on_close
 	local on_open = opts.on_open
 
@@ -52,7 +48,7 @@ function M.open(opts)
 		vim.cmd("res " .. height)
 
 		-- Set up close keymap
-		vim.keymap.set("n", close_key, function()
+		vim.keymap.set("n", "q", function()
 			if on_close then
 				on_close()
 			end
@@ -71,7 +67,6 @@ end
 --- @param opts.file string Path to the file to open
 --- @param opts.width? number Width of the popup window (default: 80)
 --- @param opts.height? number Height of the popup window (default: 25)
---- @param opts.close_key? string Key to close the buffer (default: "q")
 --- @param opts.on_close? function Function to run on close
 --- @param opts.on_open? function Function to run after opening
 --- @param opts.relative? string Window relative positioning (default: "editor")
@@ -82,7 +77,6 @@ function M.open_popup(opts)
 	local file = opts.file
 	local width = opts.width or 80
 	local height = opts.height or 25
-	local close_key = opts.close_key or "q"
 	local on_close = opts.on_close
 	local on_open = opts.on_open
 	local relative = opts.relative or "editor"
@@ -122,7 +116,7 @@ function M.open_popup(opts)
 		vim.cmd("edit " .. file)
 
 		-- Set up close keymap
-		vim.keymap.set("n", close_key, function()
+		vim.keymap.set("n", "q", function()
 			if on_close then
 				on_close()
 			end

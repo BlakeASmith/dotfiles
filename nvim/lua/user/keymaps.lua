@@ -4,7 +4,6 @@ local quick_action = require("utils.quick-action")
 local quickkeymap = quick_action.open({
 	file = "~/.config/nvim/lua/user/keymaps.lua",
 	height = 25,
-	close_key = "q",
 	on_close = function()
 		vim.cmd("update | source %")
 	end,
