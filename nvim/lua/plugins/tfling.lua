@@ -143,6 +143,24 @@ return {
 					end,
 				})
 			end)
+
+			-- Leader t1-t9 shortcuts for bottom split terminals
+			for i = 1, 9 do
+				vim.keymap.set({ "n", "v" }, "<leader>t" .. i, function()
+					tfling.term({
+						name = "term-" .. i,
+						cmd = "zsh",
+						tmux = false,
+						abduco = false,
+						win = {
+							type = "split",
+							direction = "bottom",
+							size = "30%",
+						},
+						setup = function(term) end,
+					})
+				end)
+			end
 		end,
 	},
 }
