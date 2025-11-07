@@ -36,6 +36,19 @@ def install_tmux(args: Namespace):
         print("OK, aborting then :p")
         return
 
+    # Install default command script
+    default_command_script = HERE / "default-tmux-command.sh"
+    target_script = HOME / ".tmux" / "default-tmux-command.sh"
+    if default_command_script.exists():
+        confirm_dir(target_script.parent, yes=args.yes)
+        if not confirm_symlink(
+            source=default_command_script,
+            destination=target_script,
+            yes=args.yes,
+            backup=True,
+        ):
+            print("Warning: Could not install default-tmux-command.sh")
+
     # Install TPM plugins if TPM is installed
     if not args.no_tpm and path_exists(TPM_DIR):
         if not args.no_plugins:
