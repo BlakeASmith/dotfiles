@@ -1,0 +1,19 @@
+#!/bin/bash
+# Wrapper script for tmux that implements custom default behavior:
+# - If 0 or 1 session: create/attach to 'home' session
+# - If 2+ sessions: show choose-tree
+
+# If arguments are provided, pass them through to tmux
+if [ $# -gt 0 ]; then
+    exec /usr/bin/tmux "$@"
+fi
+
+# Count existing sessions
+session_count=$(/usr/bin/tmux list-sessions 2>/dev/null | wc -l)
+
+# Execute based on session count
+if [ "$session_count" -le 1 ]; then
+    exec /usr/bin/tmux new-session -A -s home
+else
+    exec /usr/bin/tmux choose-tree
+fi
