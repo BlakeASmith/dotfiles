@@ -1,0 +1,35 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Docker files
+images/
+*.dockerfile
+Dockerfile*
+.dockerignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
