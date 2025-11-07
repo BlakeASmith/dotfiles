@@ -3,3 +3,9 @@ ControlMaster auto
 ControlPath ~/.ssh/sockets/socket-%r@%h:%p
 ControlPersist 120
 ### SSH MULTIPLEXING ###
+
+### SSH CLIPBOARD FORWARDING ###
+# Forward OSC 52 escape sequences for clipboard forwarding over SSH
+# This allows tmux copy mode to forward clipboard to local machine
+SetEnv LC_TERMINAL=1
+### SSH CLIPBOARD FORWARDING ###
