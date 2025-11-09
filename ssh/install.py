@@ -3,7 +3,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from fencing import CodeFence, copy_block
-from installman import SingleFileChange, confirm, confirm_dir, confirm_file, dependency, installer
+from installman import SingleFileChange, confirm, confirm_dir, dependency, installer
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -27,10 +27,6 @@ def install_ssh(args: Namespace):
 
     _ = confirm_dir(ssh_dir, yes=args.yes)
     _ = confirm_dir(sockets_dir, yes=args.yes)
-
-    if not confirm_file(ssh_config):
-        print("OK, aborting then :p")
-        return
 
     existing_config = ssh_config.read_text()
 

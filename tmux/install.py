@@ -2,7 +2,14 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from installman import confirm, confirm_dir, confirm_symlink, confirm_brewed, installer, path_exists
+from installman import (
+    confirm,
+    confirm_brewed,
+    confirm_dir,
+    confirm_symlink,
+    installer,
+    path_exists,
+)
 
 HERE = Path(__file__).parent
 HOME = Path.home()
@@ -19,7 +26,9 @@ def install_tmux(args: Namespace):
     # Install tmux if not already installed
     tmux_path = confirm_brewed("tmux", yes=args.yes)
     if not tmux_path:
-        print("tmux not available. Install tmux first or use --yes to install automatically.")
+        print(
+            "tmux not available. Install tmux first or use --yes to install automatically."
+        )
         return
 
     # Install TPM if not already installed
@@ -40,7 +49,9 @@ def install_tmux(args: Namespace):
     if not args.no_tpm and path_exists(TPM_DIR):
         if not args.no_plugins:
             print("\nInstalling tmux plugins...")
-            print("You may need to press 'prefix + I' in tmux to install plugins manually")
+            print(
+                "You may need to press 'prefix + I' in tmux to install plugins manually"
+            )
             print("Or run: ~/.tmux/plugins/tpm/bin/install_plugins")
             # Try to install plugins automatically
             install_plugins_path = TPM_DIR / "bin" / "install_plugins"
@@ -49,7 +60,9 @@ def install_tmux(args: Namespace):
                     subprocess.run([str(install_plugins_path)], check=False)
                 except Exception as e:
                     print(f"Could not automatically install plugins: {e}")
-                    print("Please run manually: ~/.tmux/plugins/tpm/bin/install_plugins")
+                    print(
+                        "Please run manually: ~/.tmux/plugins/tpm/bin/install_plugins"
+                    )
 
 
 def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
