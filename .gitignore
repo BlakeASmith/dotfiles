@@ -13,3 +13,5 @@ lazygit/__pycache__
 bob/__pycache__
 bin/__pycache__
 __pycache__
+karabiner/karabiner-config/node_modules
+karabiner/karabiner-config/package-lock.json
