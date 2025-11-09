@@ -2,6 +2,7 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+from fencing import CodeFence, copy_block
 from installman import (
     confirm,
     confirm_brewed,
@@ -64,6 +65,19 @@ def install_tmux(args: Namespace):
                         "Please run manually: ~/.tmux/plugins/tpm/bin/install_plugins"
                     )
 
+    _, new, changed = copy_block(
+        CodeFence.symettric("### TMUX Functions ###"),
+        HERE / "shell_functions.sh",
+        (HOME / ".zshrc").read_text(),
+        replace=True,
+    )
+
+    if changed:
+        print("Addding shell functions...")
+        (HOME / ".zshrc").write_text(new)
+    else:
+        print("Shell functions are already added in the .zshrc")
+
 
 def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
     """Install TPM (Tmux Plugin Manager) if not already installed."""
@@ -91,12 +105,13 @@ def install_tpm(tpm_dir: Path, yes: bool = False) -> None:
             stderr=subprocess.DEVNULL,
         )
         print(f"TPM installed successfully at {tpm_dir}")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to install TPM: {e}")
-        print(f"Please install manually: git clone {TPM_URL} {tpm_dir}")
     except FileNotFoundError:
         print("git not found. Please install git first or install TPM manually:")
         print(f"git clone {TPM_URL} {tpm_dir}")
+
+    except Exception as e:
+        print(f"Failed to install TPM: {e}")
+        print(f"Please install manually: git clone {TPM_URL} {tpm_dir}")
 
 
 @install_tmux.parser

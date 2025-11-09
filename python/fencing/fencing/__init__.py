@@ -42,6 +42,10 @@ class CodeFence:
     start: str
     end: str
 
+    @staticmethod
+    def symettric(start: str):
+        return CodeFence(start, start)
+
     @cached_property
     def start_pattern(self):
         return re.compile(self.start)
