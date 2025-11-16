@@ -3,6 +3,51 @@ return {
 		"stevearc/quicker.nvim",
 		ft = "qf",
 		opts = {
+			use_default_opts = false,
+			opts = {
+				buflisted = false,
+				number = false,
+				relativenumber = false,
+				signcolumn = "yes:1",
+				winfixheight = true,
+				wrap = false,
+			},
+			edit = {
+				enabled = true,
+				autosave = "unmodified",
+			},
+			highlight = {
+				treesitter = true,
+				lsp = true,
+				load_buffers = true,
+			},
+			follow = {
+				enabled = true,
+			},
+			constrain_cursor = true,
+			trim_leading_whitespace = "common",
+			type_icons = {
+				E = " ",
+				W = " ",
+				I = " ",
+				N = " ",
+				H = " ",
+			},
+			borders = {
+				vert = "│",
+				strong_header = "─",
+				strong_cross = "┼",
+				strong_end = "┤",
+				soft_header = "·",
+				soft_cross = "┊",
+				soft_end = "┆",
+			},
+			max_filename_width = function()
+				return math.floor(math.min(80, vim.o.columns * 0.4))
+			end,
+			header_length = function(_, start_col)
+				return vim.o.columns - start_col - 2
+			end,
 			keys = {
 				{
 					">",
