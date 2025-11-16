@@ -1,26 +1,58 @@
+local always_hidden = {
+	".git",
+	".DS_Store",
+}
+
+local function is_hidden_file(name)
+	if vim.startswith(name, ".") then
+		return true
+	end
+
+	local extra = {
+		"__pycache__",
+		"node_modules",
+	}
+
+	for _, entry in ipairs(extra) do
+		if entry == name then
+			return true
+		}
+	end
+
+	return false
+end
+
+local function is_always_hidden(name)
+	for _, entry in ipairs(always_hidden) do
+		if entry == name then
+			return true
+		end
+	end
+	return false
+end
+
 return {
 	{
 		"stevearc/oil.nvim",
+		lazy = false,
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			{ "echasnovski/mini.icons", opts = {} },
+		},
 		---@module 'oil'
 		---@type oil.SetupOpts
 		opts = {
-			-- Oil will take over directory buffers (e.g. `vim .` or `:e src/`)
-			-- Set to false if you want some other plugin (e.g. netrw) to open when you edit directories.
 			default_file_explorer = true,
-			-- Id is automatically added at the beginning, and name at the end
-			-- See :help oil-columns
 			columns = {
 				"icon",
-				-- "permissions",
+				"permissions",
 				"size",
-				-- "mtime",
+				"mtime",
 			},
-			-- Buffer-local options to use for oil buffers
 			buf_options = {
 				buflisted = false,
 				bufhidden = "hide",
 			},
-			-- Window-local options to use for oil buffers
 			win_options = {
 				wrap = false,
 				signcolumn = "no",
@@ -31,162 +63,144 @@ return {
 				conceallevel = 3,
 				concealcursor = "nvic",
 			},
-			-- Skip the confirmation popup for simple operations (:help oil.skip_confirm_for_simple_edits)
-			-- TODO: probably want to enable this
-			skip_confirm_for_simple_edits = false,
+			delete_to_trash = true,
+			skip_confirm_for_simple_edits = true,
 			prompt_save_on_select_new_entry = true,
+			cleanup_delay_ms = 4000,
 			lsp_file_methods = {
 				enabled = true,
-				timeout_ms = 1000,
-				autosave_changes = false,
+				timeout_ms = 1200,
+				autosave_changes = "unmodified",
 			},
 			constrain_cursor = "editable",
-			watch_for_changes = false,
+			watch_for_changes = true,
 			keymaps = {
 				["g?"] = { "actions.show_help", mode = "n" },
 				["<CR>"] = "actions.select",
-				["<C-s>"] = { "actions.select", opts = { vertical = true } },
-				["<C-h>"] = { "actions.select", opts = { horizontal = true } },
+				["<C-v>"] = { "actions.select", opts = { vertical = true } },
+				["<C-x>"] = { "actions.select", opts = { horizontal = true } },
 				["<C-t>"] = { "actions.select", opts = { tab = true } },
 				["<C-p>"] = "actions.preview",
-				["<C-c>"] = { "actions.close", mode = "n" },
-				["<C-l>"] = "actions.refresh",
+				["gp"] = { "actions.preview", desc = "Preview entry", mode = "n" },
+				["[p"] = { "actions.preview_scroll_up", desc = "Scroll preview up" },
+				["]p"] = { "actions.preview_scroll_down", desc = "Scroll preview down" },
+				["q"] = { "actions.close", desc = "Close Oil" },
+				["<C-l>"] = { "actions.refresh", desc = "Refresh listing" },
 				["-"] = { "actions.parent", mode = "n" },
 				["_"] = { "actions.open_cwd", mode = "n" },
 				["`"] = { "actions.cd", mode = "n" },
 				["~"] = { "actions.cd", opts = { scope = "tab" }, mode = "n" },
-				["gs"] = { "actions.change_sort", mode = "n" },
-				["gx"] = "actions.open_external",
 				["g."] = { "actions.toggle_hidden", mode = "n" },
+				["gs"] = { "actions.change_sort", mode = "n" },
+				["gx"] = { "actions.open_external", desc = "Open with system handler" },
 				["g\\"] = { "actions.toggle_trash", mode = "n" },
+				["gy"] = { "actions.yank_entry", desc = "Copy entry path" },
+				["gY"] = {
+					callback = function()
+						require("oil.actions").yank_entry.callback({ modify = ":~" })
+					end,
+					desc = "Copy path relative to home",
+					mode = "n",
+				},
 			},
-			-- Set to false to disable all of the above keymaps
-			use_default_keymaps = true,
+			use_default_keymaps = false,
 			view_options = {
-				-- Show files and directories that start with "."
-				show_hidden = false,
-				-- This function defines what is considered a "hidden" file
+				show_hidden = true,
 				is_hidden_file = function(name, bufnr)
-					local m = name:match("^%.")
-					return m ~= nil
+					return is_hidden_file(name)
 				end,
-				-- This function defines what will never be shown, even when `show_hidden` is set
 				is_always_hidden = function(name, bufnr)
-					return false
+					return is_always_hidden(name)
 				end,
-				-- Sort file names with numbers in a more intuitive order for humans.
-				-- Can be "fast", true, or false. "fast" will turn it off for large directories.
-				natural_order = "fast",
-				-- Sort file and directory names case insensitive
-				case_insensitive = false,
+				natural_order = true,
+				case_insensitive = true,
 				sort = {
-					-- sort order can be "asc" or "desc"
-					-- see :help oil-columns to see which columns are sortable
 					{ "type", "asc" },
 					{ "name", "asc" },
 				},
-				-- Customize the highlight group for the file name
-				highlight_filename = function(entry, is_hidden, is_link_target, is_link_orphan)
+				highlight_filename = function(entry, hidden, link_target, link_orphan)
+					if hidden then
+						return "Comment"
+					end
+					if entry.type == "directory" then
+						return "Directory"
+					end
 					return nil
 				end,
 			},
-			-- Extra arguments to pass to SCP when moving/copying files over SSH
 			extra_scp_args = {},
-			-- EXPERIMENTAL support for performing file operations with git
 			git = {
-				-- Return true to automatically git add/mv/rm files
-				add = function(path)
+				add = function(_)
 					return false
 				end,
-				mv = function(src_path, dest_path)
+				mv = function(_, _)
 					return false
 				end,
-				rm = function(path)
+				rm = function(_)
 					return false
 				end,
 			},
-			-- Configuration for the floating window in oil.open_float
 			float = {
-				-- Padding around the floating window
-				padding = 2,
-				-- max_width and max_height can be integers or a float between 0 and 1 (e.g. 0.4 for 40%)
-				max_width = 0,
-				max_height = 0,
-				border = nil,
+				padding = 3,
+				max_width = 0.85,
+				max_height = 0.8,
+				border = "rounded",
 				win_options = {
 					winblend = 0,
 				},
-				-- optionally override the oil buffers window title with custom function: fun(winid: integer): string
-				get_win_title = nil,
-				-- preview_split: Split direction: "auto", "left", "right", "above", "below".
-				preview_split = "auto",
-				-- This is the config that will be passed to nvim_open_win.
-				-- Change values here to customize the layout
+				get_win_title = function()
+					return " Oil "
+				end,
+				preview_split = "right",
 				override = function(conf)
+					if conf.width then
+						conf.col = math.floor((vim.o.columns - conf.width) / 2)
+					end
+					if conf.height then
+						conf.row = math.floor((vim.o.lines - conf.height) / 2)
+					end
 					return conf
 				end,
 			},
-			-- Configuration for the file preview window
 			preview_win = {
-				-- Whether the preview window is automatically updated when the cursor is moved
 				update_on_cursor_moved = true,
-				-- How to open the preview window "load"|"scratch"|"fast_scratch"
-				preview_method = "fast_scratch",
-				-- A function that returns true to disable preview on a file e.g. to avoid lag
+				preview_method = "scratch",
 				disable_preview = function(filename)
-					return false
+					return vim.fn.getfsize(filename) > 1024 * 200
 				end,
-				-- Window-local options to use for preview window buffers
-				win_options = {},
+				win_options = {
+					number = true,
+					relativenumber = false,
+					signcolumn = "no",
+				},
 			},
-			-- Configuration for the floating action confirmation window
 			confirmation = {
-				-- Width dimensions can be integers or a float between 0 and 1 (e.g. 0.4 for 40%)
-				-- min_width and max_width can be a single value or a list of mixed integer/float types.
-				-- max_width = {100, 0.8} means "the lesser of 100 columns or 80% of total"
-				max_width = 0.9,
-				-- min_width = {40, 0.4} means "the greater of 40 columns or 40% of total"
+				max_width = { 100, 0.8 },
 				min_width = { 40, 0.4 },
-				-- optionally define an integer/float for the exact width of the preview window
-				width = nil,
-				-- Height dimensions can be integers or a float between 0 and 1 (e.g. 0.4 for 40%)
-				-- min_height and max_height can be a single value or a list of mixed integer/float types.
-				-- max_height = {80, 0.9} means "the lesser of 80 columns or 90% of total"
-				max_height = 0.9,
-				-- min_height = {5, 0.1} means "the greater of 5 columns or 10% of total"
-				min_height = { 5, 0.1 },
-				-- optionally define an integer/float for the exact height of the preview window
-				height = nil,
-				border = nil,
+				max_height = { 20, 0.4 },
+				min_height = { 6, 0.2 },
+				border = "rounded",
 				win_options = {
 					winblend = 0,
 				},
 			},
-			-- Configuration for the floating progress window
 			progress = {
-				max_width = 0.9,
+				max_width = { 80, 0.9 },
 				min_width = { 40, 0.4 },
-				width = nil,
-				max_height = { 10, 0.9 },
-				min_height = { 5, 0.1 },
-				height = nil,
-				border = nil,
+				max_height = { 10, 0.5 },
+				min_height = { 5, 0.2 },
+				border = "rounded",
 				minimized_border = "none",
 				win_options = {
 					winblend = 0,
 				},
 			},
-			-- Configuration for the floating SSH window
 			ssh = {
-				border = nil,
+				border = "rounded",
 			},
-			-- Configuration for the floating keymaps help window
 			keymaps_help = {
-				border = nil,
+				border = "rounded",
 			},
-			-- Optional dependencies
-			dependencies = { { "nvim-mini/mini.icons", opts = {} } },
-			lazy = false,
 		},
 	},
 }
