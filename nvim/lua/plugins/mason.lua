@@ -13,6 +13,7 @@ return {
 				"basedpyright",
 				"lua_ls",
 				"jdtls",
+				"gopls",
 				"marksman",
 				"typescript-language-server",
 			},
