@@ -73,7 +73,7 @@ return {
 				vim.keymap.set("n", lhs, rhs, { desc = desc })
 			end
 
-			map("<leader>qq", function()
+			map("<leader>qf", function()
 				quicker.toggle()
 			end, "Toggle quickfix")
 
