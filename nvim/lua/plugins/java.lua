@@ -26,7 +26,7 @@ local jdtls_plugin = {
 
 		-- Autocommand may not fire when opening .java file directly
 		-- Calling it once for this case
-		attach_jdtls()
+		-- attach_jdtls()
 	end,
 }
 

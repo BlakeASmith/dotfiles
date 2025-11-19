@@ -16,7 +16,7 @@ local function is_hidden_file(name)
 	for _, entry in ipairs(extra) do
 		if entry == name then
 			return true
-		}
+		end
 	end
 
 	return false

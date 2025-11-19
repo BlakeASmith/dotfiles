@@ -15,7 +15,7 @@ return {
 				"jdtls",
 				"gopls",
 				"marksman",
-				"typescript-language-server",
+				"tsserver",
 			},
 		},
 	},
