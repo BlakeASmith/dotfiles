@@ -15,7 +15,7 @@ return {
 				"jdtls",
 				"gopls",
 				"marksman",
-				"tsserver",
+				"ts_ls",
 			},
 		},
 	},
