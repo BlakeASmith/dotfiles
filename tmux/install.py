@@ -46,6 +46,22 @@ def install_tmux(args: Namespace):
         print("OK, aborting then :p")
         return
 
+    local_bin = HOME / ".local" / "bin"
+    new_session_script = HERE / "tmux-new-session.sh"
+    new_session_link = local_bin / "tmux-new-session"
+    if new_session_script.is_file():
+        confirm_dir(local_bin, yes=args.yes)
+        new_session_script.chmod(new_session_script.stat().st_mode | 0o111)
+        if not confirm_symlink(
+            source=new_session_script,
+            destination=new_session_link,
+            yes=args.yes,
+            backup=True,
+        ):
+            print(
+                f"Skipping symlink for {new_session_link}; tmux prefix C-n / C-p / N need that script on PATH."
+            )
+
     # Install TPM plugins if TPM is installed
     if not args.no_tpm and path_exists(TPM_DIR):
         if not args.no_plugins:
