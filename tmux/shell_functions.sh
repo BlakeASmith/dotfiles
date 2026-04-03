@@ -11,4 +11,9 @@ t() {
     tmux attach -t "$session"
     
 }
+
+# New tmux session rooted at a project path (mkdir -p). Same behavior as ~/.local/bin/tmux-new-session.
+tns() {
+    command tmux-new-session "$@"
+}
 ### TMUX Functions ###
